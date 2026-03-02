@@ -1,0 +1,263 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-degular-black: var(--font-degular-black);
+  --font-degular-bold: var(--font-degular-bold);
+  --font-degular-semibold: var(--font-degular-semibold);
+  --font-degular-medium: var(--font-degular-medium);
+  --font-degular: var(--font-degular);
+  --font-degular-thin: var(--font-degular-thin);
+
+  --color-heading: var(--heading);
+  --color-heading-invert: var(--heading-invert);
+  --color-text: var(--text);
+  --color-text-invert: var(--text-invert);
+  --color-nav-text: var(--nav-text);
+}
+
+:root {
+  --heading: #060606;
+  --heading-invert: #ffffff;
+  --text: #1c1c1c;
+  --text-invert: #cfcfcf;
+  --nav-text: #505050;
+}
+
+.dark {
+  --heading: #ffffff;
+  --heading-invert: #060606;
+  --text: #cfcfcf;
+  --text-invert: #1c1c1c;
+  --nav-text: #cfcfcf;
+}
+
+.hologram-card {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.1) 0%,
+    rgba(255, 255, 255, 0.05) 50%,
+    rgba(255, 255, 255, 0.1) 100%
+  );
+  backdrop-filter: blur(20px);
+  animation: hologram-flicker 3s ease-in-out infinite;
+  position: relative;
+  overflow: hidden;
+}
+
+.morphing-container {
+  animation: morphing-border 8s ease-in-out infinite;
+}
+
+.animate-spin-slow {
+  animation: spinSlow 20s linear infinite;
+}
+
+.animate-orbit {
+  animation: orbit 20s linear infinite;
+}
+.animate-pulse-ring {
+  animation: pulseRing 3s ease-in-out infinite;
+}
+.animate-spin-reverse {
+  animation: spinReverse 15s linear infinite;
+}
+.animate-pulse-slow {
+  animation: pulse 3s ease-in-out infinite;
+}
+.animate-scale-in {
+  animation: scaleIn 0.6s ease-out;
+}
+.animate-data-stream {
+  animation: dataStream 4s ease-in-out infinite;
+}
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+.animate-mega-pulse {
+  animation: megaPulse 4s ease-in-out infinite;
+}
+.animate-central-pulse {
+  animation: centralPulse 3s ease-in-out infinite;
+}
+.animate-orbital-counter {
+  animation: orbitalCounter 15s linear infinite;
+}
+.animate-orbital-clockwise {
+  animation: orbitalClockwise 20s linear infinite;
+}
+.animate-counter-up {
+  animation: counterUp 0.8s ease-out;
+}
+
+@keyframes hologram-flicker {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+  75% {
+    opacity: 0.9;
+  }
+}
+
+@keyframes morphing-border {
+  0% {
+    border-radius: 20px;
+  }
+  25% {
+    border-radius: 50px 20px;
+  }
+  50% {
+    border-radius: 20px 50px;
+  }
+  75% {
+    border-radius: 50px;
+  }
+  100% {
+    border-radius: 20px;
+  }
+}
+
+@keyframes spinSlow {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes orbit {
+  0% {
+    transform: rotate(0deg) translateX(140px) rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg) translateX(140px) rotate(-360deg);
+  }
+}
+
+@keyframes pulseRing {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.3;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.6;
+  }
+}
+
+@keyframes spinReverse {
+  0% {
+    transform: rotate(360deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes scaleIn {
+  0% {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes dataStream {
+  0% {
+    stroke-dasharray: 0, 10;
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    stroke-dasharray: 10, 0;
+    opacity: 0;
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes megaPulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.3;
+  }
+  50% {
+    transform: scale(1.4);
+    opacity: 0.8;
+  }
+}
+
+@keyframes centralPulse {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 40px rgba(245, 245, 245, 0.3),
+      0 0 80px rgba(245, 245, 245, 0.1), inset 0 0 20px rgba(245, 245, 245, 0.1);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 0 60px rgba(245, 245, 245, 0.5),
+      0 0 120px rgba(245, 245, 245, 0.2),
+      inset 0 0 30px rgba(245, 245, 245, 0.2);
+  }
+}
+
+@keyframes orbitalCounter {
+  0% {
+    transform: rotate(360deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes orbitalClockwise {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes counterUp {
+  0% {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
