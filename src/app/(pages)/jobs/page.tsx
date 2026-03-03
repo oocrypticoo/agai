@@ -79,7 +79,7 @@ const Jobs: React.FC = () => {
           {/* Create Job */}
           <button
             onClick={() => setShowDisclosure(true)}
-            className="border border-black/10 dark:border-white/10 rounded-2xl p-8 bg-white/5 dark:bg-white/5 hover:border-[#805abe]/30 hover:bg-[#805abe]/15 transition-colors duration-300 block text-left w-full"
+            className="border border-black/10 dark:border-white/10 rounded-2xl p-8 hover:border-[#805abe]/30 hover:bg-[#805abe]/15 transition-colors duration-300 block text-left w-full"
           >
             <div className="flex items-center gap-3 mb-3">
               <Briefcase className="size-6 text-[#805abe]" />
@@ -95,7 +95,7 @@ const Jobs: React.FC = () => {
           {/* Browse Jobs */}
           <Link
             href="/jobs/ledger"
-            className="border border-black/10 dark:border-white/10 rounded-2xl p-8 bg-white/5 dark:bg-white/5 hover:border-[#805abe]/30 hover:bg-[#805abe]/15 transition-colors duration-300 block"
+            className="border border-black/10 dark:border-white/10 rounded-2xl p-8 hover:border-[#805abe]/30 hover:bg-[#805abe]/15 transition-colors duration-300 block"
           >
             <div className="flex items-center gap-3 mb-3">
               <Search className="size-6 text-[#805abe]" />
@@ -111,7 +111,7 @@ const Jobs: React.FC = () => {
           {/* Platform Config */}
           <Link
             href="/jobs/ops"
-            className="border border-black/10 dark:border-white/10 rounded-2xl p-8 bg-white/5 dark:bg-white/5 hover:border-[#805abe]/30 hover:bg-[#805abe]/15 transition-colors duration-300 block"
+            className="border border-black/10 dark:border-white/10 rounded-2xl p-8 hover:border-[#805abe]/30 hover:bg-[#805abe]/15 transition-colors duration-300 block"
           >
             <div className="flex items-center gap-3 mb-3">
               <Settings className="size-6 text-[#805abe]" />
