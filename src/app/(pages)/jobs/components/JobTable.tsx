@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useMemo } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Download, Search } from "lucide-react";
 import type { Job, JobStatus } from "../lib/types";
@@ -22,6 +22,7 @@ interface JobTableProps {
 }
 
 const JobTable: React.FC<JobTableProps> = ({ jobs }) => {
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState<JobStatus | "All">("All");
 
@@ -133,15 +134,11 @@ const JobTable: React.FC<JobTableProps> = ({ jobs }) => {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: index * 0.05 }}
-                className="border-b border-black/5 dark:border-white/5 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                onClick={() => router.push(`/jobs/${job.id}`)}
+                className="border-b border-black/5 dark:border-white/5 hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
               >
-                <td className="py-3 text-sm font-degular text-heading">
-                  <Link
-                    href={`/jobs/${job.id}`}
-                    className="text-[#805abe] hover:text-[#b44ace] underline underline-offset-2 transition-colors duration-300"
-                  >
-                    #{job.id}
-                  </Link>
+                <td className="py-3 text-sm font-degular text-[#805abe]">
+                  #{job.id}
                 </td>
                 <td className="py-3 text-sm font-degular text-heading max-w-[200px] truncate">
                   {job.title}

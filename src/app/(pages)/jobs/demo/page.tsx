@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import Footer from "@/app/sections/Footer";
 import { DEMO_SCENARIOS } from "../lib/demo-data";
@@ -15,6 +15,7 @@ const ACTOR_COLORS: Record<string, string> = {
 };
 
 const DemoScenariosPage: React.FC = () => {
+  const router = useRouter();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -69,9 +70,6 @@ const DemoScenariosPage: React.FC = () => {
                 <th className="pb-3 text-xs font-degular-medium text-text uppercase tracking-wider hidden sm:table-cell">
                   Tags
                 </th>
-                <th className="pb-3 text-xs font-degular-medium text-text uppercase tracking-wider">
-                  Job
-                </th>
               </tr>
             </thead>
             <tbody>
@@ -81,7 +79,8 @@ const DemoScenariosPage: React.FC = () => {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3, delay: 0.8 + index * 0.05 }}
-                  className="border-b border-black/5 dark:border-white/5"
+                  onClick={() => router.push(`/jobs/${scenario.jobId}`)}
+                  className="border-b border-black/5 dark:border-white/5 hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
                 >
                   <td className="py-4 text-sm font-degular text-text">
                     {scenario.id}
@@ -114,14 +113,6 @@ const DemoScenariosPage: React.FC = () => {
                         </span>
                       ))}
                     </div>
-                  </td>
-                  <td className="py-4">
-                    <Link
-                      href={`/jobs/${scenario.jobId}`}
-                      className="text-[#805abe] hover:text-[#b44ace] font-degular-medium text-sm underline underline-offset-2 transition-colors duration-300"
-                    >
-                      Open
-                    </Link>
                   </td>
                 </motion.tr>
               ))}
