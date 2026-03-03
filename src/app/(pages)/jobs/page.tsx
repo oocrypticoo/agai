@@ -10,8 +10,7 @@ import JobsSubNav from "./components/JobsSubNav";
 
 const Jobs: React.FC = () => {
   const [mounted, setMounted] = useState(false);
-  const text1 = SplitString("AGIJobManager ·");
-  const text2 = SplitString("Sovereign Ops Console");
+  const text1 = SplitString("AGI Job Manager");
 
   const charVariants = {
     hidden: { opacity: 0 },
@@ -45,24 +44,15 @@ const Jobs: React.FC = () => {
                 </motion.span>
               ))}
             </motion.span>
-            <br />
-            <motion.span
-              initial="hidden"
-              animate="reveal"
-              transition={{ staggerChildren: 0.02, delayChildren: 0.3 }}
-              className="text-transparent bg-clip-text bg-gradient-to-r from-[#805abe] to-[#b44ace]"
-            >
-              {text2.map((char, index) => (
-                <motion.span
-                  key={index}
-                  variants={charVariants}
-                  transition={{ duration: 0.5 }}
-                >
-                  {char}
-                </motion.span>
-              ))}
-            </motion.span>
           </motion.h1>
+          <motion.p
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.35 }}
+            className="-mt-1 text-sm sm:text-base tracking-widest uppercase text-text font-mono"
+          >
+            &gt; Sovereign Ops Console
+          </motion.p>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
