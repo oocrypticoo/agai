@@ -145,7 +145,7 @@ const Jobs: React.FC = () => {
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ duration: 0.3 }}
               onClick={(e) => e.stopPropagation()}
-              className="relative max-w-2xl w-full max-h-[90vh] flex flex-col bg-white dark:bg-[#0A0A0A] border border-black/10 dark:border-white/10 rounded-2xl shadow-2xl"
+              className="relative max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden bg-white dark:bg-[#0A0A0A] border border-black/10 dark:border-white/10 rounded-2xl shadow-2xl"
             >
               {/* Header */}
               <div className="flex items-center justify-between px-8 pt-8 pb-4 border-b border-black/10 dark:border-white/10 shrink-0">
@@ -164,7 +164,7 @@ const Jobs: React.FC = () => {
               </div>
 
               {/* Scrollable terms */}
-              <div className="flex-1 overflow-y-auto px-8 py-6 min-h-0">
+              <div className="flex-1 overflow-y-auto overscroll-contain px-8 py-6 min-h-0">
                 <pre className="whitespace-pre-wrap text-xs sm:text-sm text-text font-mono leading-relaxed">
                   {TERMS_AND_CONDITIONS}
                 </pre>
