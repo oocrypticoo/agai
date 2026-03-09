@@ -1119,7 +1119,7 @@ export default function JobsDApp() {
 
                     {/* Bond Calculator */}
                     <div className="border-t border-black/5 dark:border-white/5 pt-4">
-                      <h4 className="text-[11px] font-degular-medium text-text/50 mb-2">Bond Calculator</h4>
+                      <h4 className="text-sm font-degular-semibold text-heading mb-2">Bond Calculator</h4>
                       <input
                         type="number"
                         value={calcPayout}
