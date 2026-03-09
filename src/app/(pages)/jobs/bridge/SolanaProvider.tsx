@@ -3,9 +3,9 @@ import React, { useMemo, type ReactNode } from 'react';
 import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react';
 import { PhantomWalletAdapter, SolflareWalletAdapter } from '@solana/wallet-adapter-wallets';
 
-// Use env-configurable RPC to avoid rate-limiting on the public endpoint.
-// Set NEXT_PUBLIC_SOLANA_RPC in .env.local (e.g. a Helius or QuickNode URL).
-const SOLANA_RPC = process.env.NEXT_PUBLIC_SOLANA_RPC || 'https://api.mainnet-beta.solana.com';
+// Proxy Solana RPC through our API route to avoid CORS/rate-limit issues.
+// Override with NEXT_PUBLIC_SOLANA_RPC if you have a dedicated endpoint.
+const SOLANA_RPC = process.env.NEXT_PUBLIC_SOLANA_RPC || '/api/solana-rpc';
 
 export function SolanaProvider({ children }: { children: ReactNode }) {
   const wallets = useMemo(
