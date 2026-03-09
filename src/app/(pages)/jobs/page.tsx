@@ -243,10 +243,12 @@ export default function JobsDApp() {
   }, [address]);
 
   // Auto-detect ENS subdomains — cache in sessionStorage for instant loads
+  // Depend only on `address` — it's undefined when disconnected, so covers both cases
   useEffect(() => {
-    if (!address || !isConnected) {
+    if (!address) {
       setEnsAgent(null);
       setEnsClub(null);
+      setEnsLoading(false);
       return;
     }
     let cancelled = false;
@@ -259,15 +261,12 @@ export default function JobsDApp() {
         const { agent, club } = JSON.parse(cached);
         setEnsAgent(agent);
         setEnsClub(club);
-        setEnsLoading(false);
-      } else {
-        setEnsLoading(true);
       }
-    } catch {
-      setEnsLoading(true);
-    }
+    } catch { /* ignore */ }
 
-    // 2. Background refresh via our API route (proxies The Graph)
+    // Always fetch fresh in background
+    setEnsLoading(true);
+
     async function fetchENS() {
       try {
         const addr = address!.toLowerCase();
@@ -292,18 +291,9 @@ export default function JobsDApp() {
           try {
             sessionStorage.setItem(cacheKey, JSON.stringify({ agent: agentName, club: clubName }));
           } catch { /* storage full, ignore */ }
-        } else {
-          // API failed — only null out if we had no cache
-          if (!cancelled && !sessionStorage.getItem(cacheKey)) {
-            setEnsAgent(null);
-            setEnsClub(null);
-          }
         }
       } catch {
-        if (!cancelled && !sessionStorage.getItem(cacheKey)) {
-          setEnsAgent(null);
-          setEnsClub(null);
-        }
+        // Network error — keep cached values if any
       } finally {
         if (!cancelled) setEnsLoading(false);
       }
@@ -311,7 +301,7 @@ export default function JobsDApp() {
 
     fetchENS();
     return () => { cancelled = true; };
-  }, [address, isConnected]);
+  }, [address]);
 
   // ── Event-based job discovery + contract reads ───────────────────────────
 
