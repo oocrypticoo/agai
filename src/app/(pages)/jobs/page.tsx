@@ -1049,6 +1049,40 @@ export default function JobsDApp() {
           </div>
         </motion.div>
 
+        {/* ═══ Practical Guidance ═══ */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.39 }}
+          className="mb-10"
+        >
+          <h2 className="text-xs uppercase tracking-widest text-text/40 font-degular-medium mb-4">Practical Guidance</h2>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            {([
+              {
+                title: 'For Employers',
+                desc: 'Think of this as an escrow-first workflow. Once a job is created, your payout is locked in the contract. The biggest quality lever is the clarity of the jobSpecURI and acceptance criteria.',
+              },
+              {
+                title: 'For Agents',
+                desc: 'Your eligibility and payout share depend on the contract rules. Verify your ENS and understand your bond exposure before racing to apply for open work.',
+              },
+              {
+                title: 'For Validators',
+                desc: 'Validator actions are economically meaningful. You are not just clicking approve/disapprove; you are staking a position that can be rewarded or slashed.',
+              },
+            ] as const).map((card) => (
+              <div
+                key={card.title}
+                className="rounded-2xl border border-black/5 dark:border-white/5 bg-white/[0.02] p-5"
+              >
+                <h3 className="text-sm font-degular-semibold text-heading mb-2">{card.title}</h3>
+                <p className="text-xs text-text/60 font-degular leading-relaxed">{card.desc}</p>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+
         {/* ═══ Payout · Validation · Playbook (3-card row) ═══ */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
