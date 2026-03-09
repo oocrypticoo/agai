@@ -843,6 +843,17 @@ export default function JobsDApp() {
               )}
             </div>
           ))}
+          {isConnected && !ensLoading && !ensClub && (
+            <a
+              href="https://montrealai.xyz/club.html"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl border border-[#805abe]/30 bg-[#805abe]/10 text-[#805abe] text-xs font-degular-medium hover:bg-[#805abe]/20 transition-all duration-300"
+            >
+              <Wallet className="size-3.5" />
+              Buy Club Domain
+            </a>
+          )}
         </motion.div>
 
         {/* ═══ Protocol Pulse — KPI Tiles ═══ */}
