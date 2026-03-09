@@ -5,7 +5,7 @@ import { PhantomWalletAdapter, SolflareWalletAdapter } from '@solana/wallet-adap
 
 // Use env-configurable RPC to avoid rate-limiting on the public endpoint.
 // Set NEXT_PUBLIC_SOLANA_RPC in .env.local (e.g. a Helius or QuickNode URL).
-const SOLANA_RPC = process.env.NEXT_PUBLIC_SOLANA_RPC || 'https://rpc.ankr.com/solana';
+const SOLANA_RPC = process.env.NEXT_PUBLIC_SOLANA_RPC || 'https://api.mainnet-beta.solana.com';
 
 export function SolanaProvider({ children }: { children: ReactNode }) {
   const wallets = useMemo(
