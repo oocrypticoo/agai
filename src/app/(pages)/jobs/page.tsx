@@ -687,6 +687,7 @@ export default function JobsDApp() {
   }
 
   function handleOpenCreateJob() {
+    if (!isConnected) return;
     if (!termsAccepted) {
       setShowTerms(true);
     } else {
@@ -736,7 +737,12 @@ export default function JobsDApp() {
           <div className="flex flex-wrap gap-3">
             <button
               onClick={handleOpenCreateJob}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#805abe] hover:bg-[#9370cb] text-white text-sm font-degular-medium transition-all duration-300"
+              disabled={!isConnected}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-degular-medium transition-all duration-300 ${
+                isConnected
+                  ? 'bg-[#805abe] hover:bg-[#9370cb] text-white'
+                  : 'bg-[#805abe]/40 text-white/50 cursor-not-allowed'
+              }`}
             >
               <Briefcase className="size-4" />
               Create Job
@@ -1305,6 +1311,31 @@ export default function JobsDApp() {
                   </a>
                 </div>
               ))}
+            </div>
+          </div>
+        </motion.div>
+
+        {/* ═══ Contact & Legal ═══ */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.55 }}
+          className="mb-10"
+        >
+          <div className="rounded-2xl border border-black/5 dark:border-white/5 bg-white/[0.02] p-6">
+            <h3 className="text-sm font-degular-semibold text-heading mb-2">Contact &amp; Legal</h3>
+            <p className="text-xs text-text/50 font-degular leading-relaxed mb-3">
+              The full Terms &amp; Conditions are embedded above for easier reading. This footer keeps the public contact and external legal reference links handy.
+            </p>
+            <div className="space-y-1 text-xs font-degular">
+              <div>
+                <span className="text-text/40">Contact: </span>
+                <a href="mailto:secretariat@montreal.ai" className="text-[#805abe] hover:text-[#9370cb] transition-colors">secretariat@montreal.ai</a>
+              </div>
+              <div>
+                <span className="text-text/40">Terms: </span>
+                <a href="https://agialphaagent.com" target="_blank" rel="noopener noreferrer" className="text-[#805abe] hover:text-[#9370cb] transition-colors">agialphaagent.com</a>
+              </div>
             </div>
           </div>
         </motion.div>
