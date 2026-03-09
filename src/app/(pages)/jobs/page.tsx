@@ -267,60 +267,42 @@ export default function JobsDApp() {
       setEnsLoading(true);
     }
 
-    // 2. Background refresh from subgraph
+    // 2. Background refresh via our API route (proxies The Graph)
     async function fetchENS() {
       try {
         const addr = address!.toLowerCase();
-        const query = `{
-          agent: wrappedDomains(where: {owner: "${addr}", name_ends_with: ".${ENS_SUBDOMAINS.agent}"}, first: 1) { name }
-          club: wrappedDomains(where: {owner: "${addr}", name_ends_with: ".${ENS_SUBDOMAINS.club}"}, first: 1) { name }
-        }`;
-
-        const endpoints = [
-          'https://gateway.thegraph.com/api/subgraphs/id/5XqPmWe6gjyrJtFn9cLy237i4cWw2j9HcUJEXsP5qGtH',
-          'https://api.thegraph.com/subgraphs/name/ensdomains/ens',
-        ];
-
-        let json: { data?: { agent?: { name: string }[]; club?: { name: string }[] } } | null = null;
-
-        for (const endpoint of endpoints) {
-          if (cancelled) return;
-          try {
-            const controller = new AbortController();
-            const timer = setTimeout(() => controller.abort(), 6000);
-            const res = await fetch(endpoint, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ query }),
-              signal: controller.signal,
-            });
-            clearTimeout(timer);
-            if (res.ok) {
-              json = await res.json();
-              if (json?.data) break;
-            }
-          } catch { /* try next */ }
-        }
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 12000);
+        const res = await fetch(`/api/ens-subdomains?address=${addr}`, {
+          signal: controller.signal,
+        });
+        clearTimeout(timer);
 
         if (cancelled) return;
 
-        const agentName = json?.data?.agent?.[0]?.name ?? null;
-        const clubName = json?.data?.club?.[0]?.name ?? null;
+        if (res.ok) {
+          const data = await res.json();
+          const agentName = data.agent ?? null;
+          const clubName = data.club ?? null;
 
-        setEnsAgent(agentName);
-        setEnsClub(clubName);
+          setEnsAgent(agentName);
+          setEnsClub(clubName);
 
-        // Cache for this session
-        try {
-          sessionStorage.setItem(cacheKey, JSON.stringify({ agent: agentName, club: clubName }));
-        } catch { /* storage full, ignore */ }
-      } catch {
-        if (!cancelled) {
-          // Only null out if we had no cache
-          if (!sessionStorage.getItem(cacheKey)) {
+          // Cache for this session
+          try {
+            sessionStorage.setItem(cacheKey, JSON.stringify({ agent: agentName, club: clubName }));
+          } catch { /* storage full, ignore */ }
+        } else {
+          // API failed — only null out if we had no cache
+          if (!cancelled && !sessionStorage.getItem(cacheKey)) {
             setEnsAgent(null);
             setEnsClub(null);
           }
+        }
+      } catch {
+        if (!cancelled && !sessionStorage.getItem(cacheKey)) {
+          setEnsAgent(null);
+          setEnsClub(null);
         }
       } finally {
         if (!cancelled) setEnsLoading(false);
