@@ -1251,13 +1251,13 @@ export default function JobsDApp() {
                       ['Max Payout', pp.maxPayout !== undefined ? `${formatUnits(pp.maxPayout, 18)} AGI` : '—'],
                       ['Duration Limit', pp.maxDuration !== undefined ? formatDuration(pp.maxDuration) : '—'],
                       ['Validation Reward', pp.validationRewardPct !== undefined ? `${Number(pp.validationRewardPct)}%` : '—'],
-                      ['Agent Bond Bps', pp.agentBondBps !== undefined ? `${Number(pp.agentBondBps)}` : '—'],
+                      ['Agent Bond', pp.agentBondBps !== undefined ? `${Number(pp.agentBondBps) / 100}%` : '—'],
                       ['Agent Bond Min', pp.agentBondMin !== undefined ? `${formatUnits(pp.agentBondMin, 18)} AGI` : '—'],
                       ['Agent Bond Max', pp.agentBondMax !== undefined ? `${formatUnits(pp.agentBondMax, 18)} AGI` : '—'],
-                      ['Validator Bond Bps', pp.validatorBondBps !== undefined ? `${Number(pp.validatorBondBps)}` : '—'],
+                      ['Validator Bond', pp.validatorBondBps !== undefined ? `${Number(pp.validatorBondBps) / 100}%` : '—'],
                       ['Validator Bond Min', pp.validatorBondMin !== undefined ? `${formatUnits(pp.validatorBondMin, 18)} AGI` : '—'],
                       ['Validator Bond Max', pp.validatorBondMax !== undefined ? `${formatUnits(pp.validatorBondMax, 18)} AGI` : '—'],
-                      ['Validator Slash', pp.validatorSlashBps !== undefined ? `${Number(pp.validatorSlashBps)}` : '—'],
+                      ['Validator Slash', pp.validatorSlashBps !== undefined ? `${Number(pp.validatorSlashBps) / 100}%` : '—'],
                     ] as const).map(([label, value]) => (
                       <div key={label as string}>
                         <span className="text-[10px] text-text/30 uppercase tracking-wider font-degular-medium">{label as string}</span>
