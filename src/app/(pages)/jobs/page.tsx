@@ -65,8 +65,14 @@ function storeTermsSig(address: string, sig: string) {
   localStorage.setItem(getTermsSigKey(address), sig);
 }
 
-/** Extract subdomain label: "jester.agent.agi.eth" → "jester" */
+/** Extract subdomain label(s) before the parent domain.
+ *  "jester.agent.agi.eth" → "jester"
+ *  "jester.alpha.agent.agi.eth" → "jester.alpha"
+ *  "foo.club.agi.eth" → "foo"  */
 function extractSubdomainLabel(fullName: string): string {
+  for (const parent of ['.agent.agi.eth', '.club.agi.eth']) {
+    if (fullName.endsWith(parent)) return fullName.slice(0, -parent.length);
+  }
   return fullName.split('.')[0];
 }
 
@@ -925,6 +931,26 @@ export default function JobsDApp() {
             </div>
           </div>
 
+          {/* Getting Started */}
+          <div className="rounded-2xl border border-black/5 dark:border-white/5 bg-white/[0.02] p-5 mb-6">
+            <h3 className="text-sm font-degular-semibold text-heading mb-3">What to do first</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              {([
+                { step: '1', text: 'Connect the wallet you want to use on Ethereum Mainnet.' },
+                { step: '2', text: 'Verify the ENS subdomain matching your role.' },
+                { step: '3', text: 'Read the contract-driven terms and accept them here.' },
+                { step: '4', text: 'Use the bond calculator and the economics charts before signing.' },
+              ] as const).map((item) => (
+                <div key={item.step} className="flex gap-3 items-start">
+                  <div className="size-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 bg-white/5 text-text/40">
+                    {item.step}
+                  </div>
+                  <p className="text-xs font-degular leading-relaxed text-text/70">{item.text}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
           {/* Primary Actions */}
           <div className="flex flex-wrap gap-3">
             <button
@@ -1197,26 +1223,31 @@ export default function JobsDApp() {
                           {label}
                         </button>
                       );
-                      if (job.status === 'Open' && isEmp) return btn('Cancel', 'bg-red-500/10 border-red-500/20 text-red-400 hover:bg-red-500/20', () => {
-                        setActionError(null);
-                        executeJobAction({ address: CONTRACTS.AGI_JOB_MANAGER, abi: agiJobManagerAbi, functionName: 'cancelJob', args: [jobId] });
-                      });
-                      if (job.status === 'Open' && ensAgent) return btn('Apply', 'bg-blue-500/10 border-blue-500/20 text-blue-400 hover:bg-blue-500/20', () => {
-                        setActionError(null);
-                        executeJobAction({ address: CONTRACTS.AGI_JOB_MANAGER, abi: agiJobManagerAbi, functionName: 'applyForJob', args: [jobId, extractSubdomainLabel(ensAgent!), [] as readonly `0x${string}`[]] });
-                      });
-                      if (job.status === 'Assigned' && isAgent) return btn('Complete', 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20', () => {
+                      const btns: React.ReactNode[] = [];
+                      if (job.status === 'Open') {
+                        if (ensAgent) btns.push(btn('Apply', 'bg-blue-500/10 border-blue-500/20 text-blue-400 hover:bg-blue-500/20', () => {
+                          setActionError(null);
+                          executeJobAction({ address: CONTRACTS.AGI_JOB_MANAGER, abi: agiJobManagerAbi, functionName: 'applyForJob', args: [jobId, extractSubdomainLabel(ensAgent!), [] as readonly `0x${string}`[]] });
+                        }));
+                        if (isEmp) btns.push(btn('Cancel', 'bg-red-500/10 border-red-500/20 text-red-400 hover:bg-red-500/20', () => {
+                          setActionError(null);
+                          executeJobAction({ address: CONTRACTS.AGI_JOB_MANAGER, abi: agiJobManagerAbi, functionName: 'cancelJob', args: [jobId] });
+                        }));
+                      }
+                      if (job.status === 'Assigned' && isAgent) btns.push(btn('Complete', 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20', () => {
                         setSelectedJob(job); setJobSpec(job.specMeta ?? null);
-                      });
-                      if (job.status === 'In Review' && ensClub) return btn('Validate', 'bg-cyan-500/10 border-cyan-500/20 text-cyan-400 hover:bg-cyan-500/20', () => {
-                        setActionError(null);
-                        executeJobAction({ address: CONTRACTS.AGI_JOB_MANAGER, abi: agiJobManagerAbi, functionName: 'validateJob', args: [jobId, extractSubdomainLabel(ensClub!), [] as readonly `0x${string}`[]] });
-                      });
-                      if (job.status === 'In Review' && isEmp) return btn('Dispute', 'bg-amber-500/10 border-amber-500/20 text-amber-400 hover:bg-amber-500/20', () => {
-                        setActionError(null);
-                        executeJobAction({ address: CONTRACTS.AGI_JOB_MANAGER, abi: agiJobManagerAbi, functionName: 'disputeJob', args: [jobId] });
-                      });
-                      return <span className="text-text/20 text-xs">—</span>;
+                      }));
+                      if (job.status === 'In Review') {
+                        if (ensClub) btns.push(btn('Validate', 'bg-cyan-500/10 border-cyan-500/20 text-cyan-400 hover:bg-cyan-500/20', () => {
+                          setActionError(null);
+                          executeJobAction({ address: CONTRACTS.AGI_JOB_MANAGER, abi: agiJobManagerAbi, functionName: 'validateJob', args: [jobId, extractSubdomainLabel(ensClub!), [] as readonly `0x${string}`[]] });
+                        }));
+                        if (isEmp) btns.push(btn('Dispute', 'bg-amber-500/10 border-amber-500/20 text-amber-400 hover:bg-amber-500/20', () => {
+                          setActionError(null);
+                          executeJobAction({ address: CONTRACTS.AGI_JOB_MANAGER, abi: agiJobManagerAbi, functionName: 'disputeJob', args: [jobId] });
+                        }));
+                      }
+                      return btns.length > 0 ? <div className="flex gap-1">{btns}</div> : <span className="text-text/20 text-xs">—</span>;
                     })()}
                   </div>
                 </div>

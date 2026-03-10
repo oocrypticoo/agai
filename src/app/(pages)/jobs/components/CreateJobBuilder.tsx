@@ -95,6 +95,9 @@ export default function CreateJobBuilder({ open, onClose }: Props) {
   const [duration, setDuration] = useState('');
   const [details, setDetails] = useState('');
 
+  // Metadata preview toggle
+  const [showMetaPreview, setShowMetaPreview] = useState(false);
+
   // Step 3: Pinning + submission
   const [pinataJwt, setPinataJwt] = useState(() => {
     if (typeof window !== 'undefined') return localStorage.getItem(PINATA_JWT_KEY) ?? '';
@@ -312,6 +315,34 @@ export default function CreateJobBuilder({ open, onClose }: Props) {
             </div>
           )}
 
+          {/* Metadata preview toggle — always visible */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label
+                onClick={() => setShowMetaPreview(v => !v)}
+                className="text-[10px] text-text/40 uppercase tracking-wider font-degular-medium flex items-center gap-1.5 cursor-pointer hover:text-text/60 transition-colors select-none"
+              >
+                <div className={`size-3.5 rounded border transition-colors flex items-center justify-center ${showMetaPreview ? 'bg-[#805abe] border-[#805abe]' : 'border-white/20 bg-transparent'}`}>
+                  {showMetaPreview && <CheckCircle2 className="size-2.5 text-white" />}
+                </div>
+                <FileJson className="size-3" /> Metadata Preview
+              </label>
+              {showMetaPreview && (
+                <button
+                  onClick={() => copyToClipboard(metadataJSON)}
+                  className="flex items-center gap-1 text-[10px] text-text/40 hover:text-[#805abe] font-degular-medium transition-colors"
+                >
+                  <Copy className="size-3" /> Copy
+                </button>
+              )}
+            </div>
+            {showMetaPreview && (
+              <pre className="w-full max-h-48 overflow-auto px-4 py-3 rounded-xl border border-black/10 dark:border-white/10 bg-black/[0.03] dark:bg-white/[0.02] text-xs font-mono text-text/70 leading-relaxed">
+                {metadataJSON}
+              </pre>
+            )}
+          </div>
+
           {/* ═══ Step 0: Job Details ═══ */}
           {step === 0 && (
             <div className="space-y-4">
@@ -513,24 +544,6 @@ export default function CreateJobBuilder({ open, onClose }: Props) {
           {/* ═══ Step 2: Review & Pin ═══ */}
           {step === 2 && (
             <div className="space-y-4">
-              {/* Metadata preview */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-[10px] text-text/40 uppercase tracking-wider font-degular-medium flex items-center gap-1">
-                    <FileJson className="size-3" /> Metadata Preview
-                  </label>
-                  <button
-                    onClick={() => copyToClipboard(metadataJSON)}
-                    className="flex items-center gap-1 text-[10px] text-text/40 hover:text-[#805abe] font-degular-medium transition-colors"
-                  >
-                    <Copy className="size-3" /> Copy
-                  </button>
-                </div>
-                <pre className="w-full max-h-48 overflow-auto px-4 py-3 rounded-xl border border-black/10 dark:border-white/10 bg-black/[0.03] dark:bg-white/[0.02] text-xs font-mono text-text/70 leading-relaxed">
-                  {metadataJSON}
-                </pre>
-              </div>
-
               {/* ENS Job Page Preview */}
               <div className="rounded-xl border border-black/5 dark:border-white/5 bg-white/[0.02] p-4">
                 <div className="flex items-center gap-2 mb-3">
