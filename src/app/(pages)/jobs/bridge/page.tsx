@@ -167,7 +167,7 @@ function BridgeInner() {
   // ── Derived ─────────────────────────────────────────────────────────────
 
   const depositParsed = useMemo(() => {
-    try { return depositAmount ? parseUnits(depositAmount, 18) : BigInt(0); }
+    try { return depositAmount ? parseUnits(depositAmount, 6) : BigInt(0); }
     catch { return BigInt(0); }
   }, [depositAmount]);
 
@@ -234,7 +234,7 @@ function BridgeInner() {
     // Use bridged balance (what MinterVault accepts)
     const bal = bridgedBalance as bigint | undefined;
     if (bal !== undefined) {
-      setDepositAmount(formatUnits(bal, 18));
+      setDepositAmount(formatUnits(bal, 6));
     }
   }
 
@@ -466,7 +466,7 @@ function BridgeInner() {
                   <div className="rounded-xl border border-black/5 dark:border-white/5 bg-white/[0.02] p-4">
                     <span className="text-[10px] text-text/30 uppercase tracking-wider font-degular-medium">Bridged AGIALPHA</span>
                     <p className="text-lg font-degular-bold text-heading mt-1 tabular-nums">
-                      {bridgedBalance !== undefined ? Number(formatUnits(bridgedBalance as bigint, 18)).toLocaleString(undefined, { maximumFractionDigits: 2 }) : '...'}
+                      {bridgedBalance !== undefined ? Number(formatUnits(bridgedBalance as bigint, 6)).toLocaleString(undefined, { maximumFractionDigits: 2 }) : '...'}
                     </p>
                   </div>
                   <div className="rounded-xl border border-black/5 dark:border-white/5 bg-white/[0.02] p-4">
@@ -478,7 +478,7 @@ function BridgeInner() {
                   <div className="rounded-xl border border-black/5 dark:border-white/5 bg-white/[0.02] p-4">
                     <span className="text-[10px] text-text/30 uppercase tracking-wider font-degular-medium">Vault Allowance</span>
                     <p className="text-lg font-degular-bold text-heading mt-1 tabular-nums">
-                      {vaultAllowance !== undefined ? Number(formatUnits(vaultAllowance as bigint, 18)).toLocaleString(undefined, { maximumFractionDigits: 2 }) : '...'}
+                      {vaultAllowance !== undefined ? Number(formatUnits(vaultAllowance as bigint, 6)).toLocaleString(undefined, { maximumFractionDigits: 2 }) : '...'}
                     </p>
                   </div>
                 </div>

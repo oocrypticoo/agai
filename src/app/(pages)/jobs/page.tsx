@@ -1234,7 +1234,7 @@ export default function JobsDApp() {
               <div className="rounded-2xl border border-black/5 dark:border-white/5 bg-white/[0.02] p-5">
                 <span className="text-xs text-text/40 uppercase tracking-wider font-degular-medium">$AGIALPHA (Bridged)</span>
                 <p className="text-2xl font-degular-bold text-heading mt-1 tabular-nums">
-                  {tokenBalanceBridged !== undefined ? formatUnits(tokenBalanceBridged as bigint, 18) : '—'}
+                  {tokenBalanceBridged !== undefined ? Number(formatUnits(tokenBalanceBridged as bigint, 6)).toLocaleString(undefined, { maximumFractionDigits: 2 }) : '—'}
                 </p>
               </div>
               <div className="rounded-2xl border border-black/5 dark:border-white/5 bg-white/[0.02] p-5">
