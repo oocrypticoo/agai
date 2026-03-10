@@ -222,11 +222,13 @@ function BridgeInner() {
 
   function handleDeposit() {
     if (!depositParsed || !ethAddress) return;
+    // 1:1 mint after decimal scaling (6 dec → 18 dec), so expected output = amount * 10^12
+    // Set minMintOut to 0 for simplicity (no slippage on a 1:1 vault)
     depositWrite({
       address: CONTRACTS.MINTER_VAULT,
       abi: minterVaultAbi,
       functionName: 'depositExact',
-      args: [depositParsed, ethAddress],
+      args: [depositParsed, ethAddress, BigInt(0)],
     });
   }
 

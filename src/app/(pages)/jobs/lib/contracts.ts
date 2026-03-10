@@ -292,10 +292,11 @@ export const minterVaultAbi = [
     type: 'function',
     name: 'depositExact',
     inputs: [
-      { name: 'amount', type: 'uint256' },
-      { name: 'recipient', type: 'address' },
+      { name: 'amountIn', type: 'uint256' },
+      { name: 'to', type: 'address' },
+      { name: 'minMintOut', type: 'uint256' },
     ],
-    outputs: [],
+    outputs: [{ name: 'minted', type: 'uint256' }],
     stateMutability: 'nonpayable',
   },
 ] as const;
