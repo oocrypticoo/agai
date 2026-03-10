@@ -1056,13 +1056,14 @@ export default function JobsDApp() {
           className="mb-10"
         >
           <h2 className="text-xs uppercase tracking-widest text-text/40 font-degular-medium mb-3">Protocol Pulse</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             {([
               { label: 'Open', count: kpi.Open, icon: Briefcase, iconClass: 'text-blue-400', hoverClass: 'hover:border-blue-400/20 hover:bg-blue-400/[0.03]' },
               { label: 'Assigned', count: kpi.Assigned, icon: Clock, iconClass: 'text-amber-400', hoverClass: 'hover:border-amber-400/20 hover:bg-amber-400/[0.03]' },
               { label: 'In Review', count: kpi['In Review'], icon: Eye, iconClass: 'text-cyan-400', hoverClass: 'hover:border-cyan-400/20 hover:bg-cyan-400/[0.03]' },
               { label: 'Disputed', count: kpi.Disputed, icon: AlertTriangle, iconClass: 'text-red-400', hoverClass: 'hover:border-red-400/20 hover:bg-red-400/[0.03]' },
-              { label: 'Terminal', count: kpi.Completed + kpi.Expired, icon: CheckCircle2, iconClass: 'text-emerald-400', hoverClass: 'hover:border-emerald-400/20 hover:bg-emerald-400/[0.03]' },
+              { label: 'Expired', count: kpi.Expired, icon: Timer, iconClass: 'text-zinc-400', hoverClass: 'hover:border-zinc-400/20 hover:bg-zinc-400/[0.03]' },
+              { label: 'Completed', count: kpi.Completed, icon: CheckCircle2, iconClass: 'text-emerald-400', hoverClass: 'hover:border-emerald-400/20 hover:bg-emerald-400/[0.03]' },
             ] as const).map((tile) => (
               <div
                 key={tile.label}
@@ -1131,7 +1132,7 @@ export default function JobsDApp() {
 
           <div className="rounded-2xl border border-black/5 dark:border-white/5 overflow-hidden">
             {/* Table Header */}
-            <div className="hidden lg:grid grid-cols-[60px_1.5fr_1fr_120px_80px_1fr_110px] gap-4 px-5 py-3 border-b border-black/5 dark:border-white/5 bg-white/[0.01] text-xs text-text/40 uppercase tracking-wider font-degular-medium">
+            <div className="hidden lg:grid grid-cols-[60px_1.5fr_1fr_120px_80px_1fr_110px_90px] gap-4 px-5 py-3 border-b border-black/5 dark:border-white/5 bg-white/[0.01] text-xs text-text/40 uppercase tracking-wider font-degular-medium">
               <span>ID</span>
               <span>Job</span>
               <span>Employer</span>
@@ -1139,6 +1140,7 @@ export default function JobsDApp() {
               <span>Duration</span>
               <span>Agent</span>
               <span>Status</span>
+              <span>Action</span>
             </div>
 
             {/* Rows */}
@@ -1151,7 +1153,7 @@ export default function JobsDApp() {
                 <div
                   key={job.id}
                   onClick={() => { setSelectedJob(job); setJobSpec(job.specMeta ?? null); }}
-                  className="grid grid-cols-1 lg:grid-cols-[60px_1.5fr_1fr_120px_80px_1fr_110px] gap-2 lg:gap-4 px-5 py-4 border-b border-black/5 dark:border-white/5 hover:bg-white/[0.03] transition-colors duration-200 cursor-pointer"
+                  className="grid grid-cols-1 lg:grid-cols-[60px_1.5fr_1fr_120px_80px_1fr_110px_90px] gap-2 lg:gap-4 px-5 py-4 border-b border-black/5 dark:border-white/5 hover:bg-white/[0.03] transition-colors duration-200 cursor-pointer"
                 >
                   <div className="flex items-center">
                     <span className="text-text/30 text-xs font-mono lg:text-sm">#{job.id}</span>
@@ -1179,6 +1181,19 @@ export default function JobsDApp() {
                     <span className={`inline-flex px-2.5 py-0.5 rounded-lg border text-xs font-degular-medium ${statusColors[job.status]}`}>
                       {job.status}
                     </span>
+                  </div>
+                  <div className="flex items-center">
+                    {(() => {
+                      const addr = address?.toLowerCase();
+                      const isEmp = addr === job.employer.toLowerCase();
+                      const isAgent = addr === job.assignedAgent.toLowerCase();
+                      if (job.status === 'Open' && isEmp) return <span className="text-red-400 text-xs font-degular-medium">Cancel</span>;
+                      if (job.status === 'Open' && ensAgent) return <span className="text-blue-400 text-xs font-degular-medium">Apply</span>;
+                      if (job.status === 'Assigned' && isAgent) return <span className="text-emerald-400 text-xs font-degular-medium">Complete</span>;
+                      if (job.status === 'In Review' && ensClub) return <span className="text-cyan-400 text-xs font-degular-medium">Validate</span>;
+                      if (job.status === 'In Review' && isEmp) return <span className="text-amber-400 text-xs font-degular-medium">Dispute</span>;
+                      return <span className="text-text/20 text-xs">—</span>;
+                    })()}
                   </div>
                 </div>
               ))
