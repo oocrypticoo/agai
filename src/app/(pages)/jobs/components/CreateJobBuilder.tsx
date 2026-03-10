@@ -594,13 +594,13 @@ export default function CreateJobBuilder({ open, onClose }: Props) {
                   <>
                     <div className="mb-3">
                       <label className="text-[10px] text-text/40 uppercase tracking-wider font-degular-medium mb-1 block">
-                        Pinata JWT <span className="normal-case text-text/25">(get one free at pinata.cloud)</span>
+                        Pinata JWT <span className="normal-case text-text/25">(the long token starting with eyJ... from pinata.cloud/keys)</span>
                       </label>
                       <input
                         type="password"
                         value={pinataJwt}
                         onChange={(e) => setPinataJwt(e.target.value)}
-                        placeholder="Paste your Pinata API JWT..."
+                        placeholder="eyJ..."
                         className="w-full px-3 py-2 rounded-lg border border-black/5 dark:border-white/5 bg-white/[0.02] text-xs text-heading font-mono placeholder:text-text/20 focus:outline-none focus:border-[#805abe]/30 transition-colors"
                       />
                     </div>
