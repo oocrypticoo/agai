@@ -74,6 +74,43 @@ function extractSubdomainLabel(fullName: string): string {
   return fullName.split('.')[0];
 }
 
+/** Compute the validator bond required for a given payout (15% clamped to [100, 88888888] AGIALPHA, 18 decimals) */
+function validatorBondFor(payout: bigint): bigint {
+  const bps = BigInt(1500);
+  const min = BigInt('100000000000000000000');        // 100 * 1e18
+  const max = BigInt('88888888000000000000000000');    // 88888888 * 1e18
+  let bond = (payout * bps) / BigInt(10000);
+  if (bond < min) bond = min;
+  if (bond > max) bond = max;
+  return bond;
+}
+
+/** Map known AGIJobManager revert selectors to human-readable reasons */
+const REVERT_REASONS: Record<string, string> = {
+  '0xc0a85631': 'Job not found — this job ID does not exist',
+  '0xbaf3f0f7': 'Invalid state — job is not in the correct state for this action',
+  '0xea8e4eb5': 'Not authorized — you do not own the required ENS subdomain',
+  '0x90b8ec18': 'Transfer failed — insufficient AGIALPHA balance or allowance for the required bond',
+  '0x0740e70a': 'Ineligible agent payout — agent does not hold a qualifying NFT from agiTypes',
+  '0x40581a33': 'Invalid ENS label — the subdomain label could not be verified on-chain',
+  '0x4c211ccd': 'Settlement is paused — the contract owner has paused settlements',
+};
+
+function decodeRevertReason(error: unknown): string {
+  const msg = (error as Error)?.message ?? String(error);
+  // Look for a 4-byte selector in the error
+  for (const [selector, reason] of Object.entries(REVERT_REASONS)) {
+    if (msg.includes(selector)) return reason;
+  }
+  // Wagmi/viem common messages
+  if (msg.includes('User rejected') || msg.includes('user rejected')) return 'Transaction rejected by user';
+  if (msg.includes('insufficient funds')) return 'Insufficient ETH for gas fees';
+  // Fallback: first meaningful line
+  const firstLine = msg.split('\n')[0];
+  if (firstLine.length > 120) return firstLine.slice(0, 120) + '...';
+  return firstLine || 'Transaction failed';
+}
+
 function shortenAddress(addr: string): string {
   if (!addr || addr === ZERO_ADDR) return '—';
   return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
@@ -87,9 +124,15 @@ function deriveStatus(flags: {
   isExpired: boolean;
   isCancelled: boolean;
   hasCompletionRequest: boolean;
+  validatorApprovals: bigint;
+  validatorDisapprovals: bigint;
 }): JobStatusLabel {
   if (flags.isCancelled) return 'Cancelled';
-  if (flags.isCompleted) return 'Completed';
+  if (flags.isCompleted) {
+    // Completed with more disapprovals than approvals = rejected/disputed outcome
+    if (flags.validatorDisapprovals > flags.validatorApprovals) return 'Disputed';
+    return 'Completed';
+  }
   if (flags.isDisputed) return 'Disputed';
   if (flags.isExpired) return 'Expired';
   if (flags.hasCompletionRequest) return 'In Review';
@@ -403,7 +446,8 @@ export default function JobsDApp() {
           // Status from contract booleans — authoritative
           let status: JobStatusLabel;
           if (completed) {
-            status = 'Completed';
+            // Completed with more disapprovals than approvals = disputed outcome
+            status = vDisapprovals > vApprovals ? 'Disputed' : 'Completed';
           } else if (expired) {
             status = 'Expired';
           } else if (disputed) {
@@ -767,18 +811,32 @@ export default function JobsDApp() {
 
     if (selectedJob.status === 'In Review') {
       if (userRole.hasClubENS && ensClub) {
+        const requiredBond = validatorBondFor(selectedJob.payout);
+        const balance = tokenBalance as bigint | undefined;
+        const bondDisplay = formatUnits(requiredBond, 18);
+
         actions.push({
           label: 'Approve',
           icon: ThumbsUp,
           colorClass: actionColorMap.emerald,
           execute: () => {
             setActionError(null);
-            executeJobAction({
-              address: CONTRACTS.AGI_JOB_MANAGER,
-              abi: agiJobManagerAbi,
-              functionName: 'validateJob',
-              args: [jobId, extractSubdomainLabel(ensClub), [] as readonly `0x${string}`[]],
-            });
+            if (!balance || balance < requiredBond) {
+              setActionError(`Insufficient balance for validator bond. You need ${bondDisplay} AGIALPHA but have ${balance ? formatUnits(balance, 18) : '0'}`);
+              return;
+            }
+            const allowance = tokenAllowance as bigint | undefined;
+            const needsApproval = !allowance || allowance === BigInt(0);
+            if (needsApproval) {
+              approveToken({ address: CONTRACTS.AGIALPHA_OFFICIAL, abi: erc20Abi, functionName: 'approve', args: [CONTRACTS.AGI_JOB_MANAGER, BigInt('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')] });
+            } else {
+              executeJobAction({
+                address: CONTRACTS.AGI_JOB_MANAGER,
+                abi: agiJobManagerAbi,
+                functionName: 'validateJob',
+                args: [jobId, extractSubdomainLabel(ensClub), [] as readonly `0x${string}`[]],
+              });
+            }
           },
         });
         actions.push({
@@ -787,12 +845,22 @@ export default function JobsDApp() {
           colorClass: actionColorMap.red,
           execute: () => {
             setActionError(null);
-            executeJobAction({
-              address: CONTRACTS.AGI_JOB_MANAGER,
-              abi: agiJobManagerAbi,
-              functionName: 'disapproveJob',
-              args: [jobId, extractSubdomainLabel(ensClub), [] as readonly `0x${string}`[]],
-            });
+            if (!balance || balance < requiredBond) {
+              setActionError(`Insufficient balance for validator bond. You need ${bondDisplay} AGIALPHA but have ${balance ? formatUnits(balance, 18) : '0'}`);
+              return;
+            }
+            const allowance = tokenAllowance as bigint | undefined;
+            const needsApproval = !allowance || allowance === BigInt(0);
+            if (needsApproval) {
+              approveToken({ address: CONTRACTS.AGIALPHA_OFFICIAL, abi: erc20Abi, functionName: 'approve', args: [CONTRACTS.AGI_JOB_MANAGER, BigInt('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')] });
+            } else {
+              executeJobAction({
+                address: CONTRACTS.AGI_JOB_MANAGER,
+                abi: agiJobManagerAbi,
+                functionName: 'disapproveJob',
+                args: [jobId, extractSubdomainLabel(ensClub), [] as readonly `0x${string}`[]],
+              });
+            }
           },
         });
       }
@@ -1198,9 +1266,17 @@ export default function JobsDApp() {
             </div>
           </div>
 
+          {/* Action error banner (visible when no modal is open) */}
+          {!selectedJob && (actionError || actionWriteError) && (
+            <div className="mb-3 rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-2.5 text-sm text-red-400 font-degular-medium flex items-center justify-between">
+              <span>{actionError || decodeRevertReason(actionWriteError)}</span>
+              <button onClick={() => { setActionError(null); resetAction(); }} className="text-red-400/60 hover:text-red-400 ml-3 text-xs">dismiss</button>
+            </div>
+          )}
+
           <div className="rounded-2xl border border-black/5 dark:border-white/5 overflow-hidden">
             {/* Table Header */}
-            <div className="hidden lg:grid grid-cols-[60px_1.5fr_1fr_120px_80px_1fr_110px_90px] gap-4 px-5 py-3 border-b border-black/5 dark:border-white/5 bg-white/[0.01] text-xs text-text/40 uppercase tracking-wider font-degular-medium">
+            <div className="hidden lg:grid grid-cols-[1fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_3fr] gap-4 px-5 py-3 border-b border-black/5 dark:border-white/5 bg-white/[0.01] text-xs text-text/40 uppercase tracking-wider font-degular-medium text-center">
               <span>ID</span>
               <span>Job</span>
               <span>Employer</span>
@@ -1208,6 +1284,7 @@ export default function JobsDApp() {
               <span>Duration</span>
               <span>Agent</span>
               <span>Status</span>
+              <span>Votes</span>
               <span>Action</span>
             </div>
 
@@ -1221,7 +1298,7 @@ export default function JobsDApp() {
                 <div
                   key={job.id}
                   onClick={() => { setSelectedJob(job); setJobSpec(job.specMeta ?? null); }}
-                  className="grid grid-cols-1 lg:grid-cols-[60px_1.5fr_1fr_120px_80px_1fr_110px_90px] gap-2 lg:gap-4 px-5 py-4 border-b border-black/5 dark:border-white/5 hover:bg-white/[0.03] transition-colors duration-200 cursor-pointer"
+                  className="grid grid-cols-1 lg:grid-cols-[1fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_3fr] gap-2 lg:gap-4 px-5 py-4 border-b border-black/5 dark:border-white/5 hover:bg-white/[0.03] transition-colors duration-200 cursor-pointer [&>div]:min-w-0"
                 >
                   <div className="flex items-center">
                     <span className="text-text/30 text-xs font-mono lg:text-sm">#{job.id}</span>
@@ -1250,7 +1327,12 @@ export default function JobsDApp() {
                       {job.status}
                     </span>
                   </div>
-                  <div className="flex items-center">
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs font-mono text-emerald-400">{job.validatorApprovals.toString()}</span>
+                    <span className="text-text/20 text-xs">/</span>
+                    <span className="text-xs font-mono text-red-400">{job.validatorDisapprovals.toString()}</span>
+                  </div>
+                  <div className="flex items-center gap-1 flex-wrap">
                     {(() => {
                       const addr = address?.toLowerCase();
                       const isEmp = addr === job.employer.toLowerCase();
@@ -1286,14 +1368,55 @@ export default function JobsDApp() {
                       if (job.status === 'Assigned' && isAgent) btns.push(btn('Complete', 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20', () => {
                         setSelectedJob(job); setJobSpec(job.specMeta ?? null);
                       }));
-                      if (job.status === 'In Review') {
-                        if (ensClub) btns.push(btn('Validate', 'bg-cyan-500/10 border-cyan-500/20 text-cyan-400 hover:bg-cyan-500/20', () => {
+                      if (job.status === 'Assigned') {
+                        btns.push(btn('Expire', 'bg-zinc-500/10 border-zinc-500/20 text-zinc-400 hover:bg-zinc-500/20', () => {
                           setActionError(null);
-                          executeJobAction({ address: CONTRACTS.AGI_JOB_MANAGER, abi: agiJobManagerAbi, functionName: 'validateJob', args: [jobId, extractSubdomainLabel(ensClub!), [] as readonly `0x${string}`[]] });
+                          executeJobAction({ address: CONTRACTS.AGI_JOB_MANAGER, abi: agiJobManagerAbi, functionName: 'expireJob', args: [jobId] });
                         }));
+                      }
+                      if (job.status === 'In Review') {
+                        if (ensClub) {
+                          const rBond = validatorBondFor(job.payout);
+                          const bal = tokenBalance as bigint | undefined;
+                          const bondStr = formatUnits(rBond, 18);
+                          const balStr = bal ? formatUnits(bal, 18) : '0';
+                          const checkBond = () => {
+                            if (!bal || bal < rBond) {
+                              setActionError(`Insufficient balance for validator bond. Need ${bondStr} AGIALPHA, have ${balStr}`);
+                              return false;
+                            }
+                            return true;
+                          };
+                          btns.push(btn('Approve', 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20', () => {
+                            setActionError(null);
+                            if (!checkBond()) return;
+                            const allowance = tokenAllowance as bigint | undefined;
+                            const needsApproval = !allowance || allowance === BigInt(0);
+                            if (needsApproval) {
+                              approveToken({ address: CONTRACTS.AGIALPHA_OFFICIAL, abi: erc20Abi, functionName: 'approve', args: [CONTRACTS.AGI_JOB_MANAGER, BigInt('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')] });
+                            } else {
+                              executeJobAction({ address: CONTRACTS.AGI_JOB_MANAGER, abi: agiJobManagerAbi, functionName: 'validateJob', args: [jobId, extractSubdomainLabel(ensClub!), [] as readonly `0x${string}`[]] });
+                            }
+                          }));
+                          btns.push(btn('Disapprove', 'bg-red-500/10 border-red-500/20 text-red-400 hover:bg-red-500/20', () => {
+                            setActionError(null);
+                            if (!checkBond()) return;
+                            const allowance = tokenAllowance as bigint | undefined;
+                            const needsApproval = !allowance || allowance === BigInt(0);
+                            if (needsApproval) {
+                              approveToken({ address: CONTRACTS.AGIALPHA_OFFICIAL, abi: erc20Abi, functionName: 'approve', args: [CONTRACTS.AGI_JOB_MANAGER, BigInt('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')] });
+                            } else {
+                              executeJobAction({ address: CONTRACTS.AGI_JOB_MANAGER, abi: agiJobManagerAbi, functionName: 'disapproveJob', args: [jobId, extractSubdomainLabel(ensClub!), [] as readonly `0x${string}`[]] });
+                            }
+                          }));
+                        }
                         if (isEmp) btns.push(btn('Dispute', 'bg-amber-500/10 border-amber-500/20 text-amber-400 hover:bg-amber-500/20', () => {
                           setActionError(null);
                           executeJobAction({ address: CONTRACTS.AGI_JOB_MANAGER, abi: agiJobManagerAbi, functionName: 'disputeJob', args: [jobId] });
+                        }));
+                        btns.push(btn('Finalize', 'bg-cyan-500/10 border-cyan-500/20 text-cyan-400 hover:bg-cyan-500/20', () => {
+                          setActionError(null);
+                          executeJobAction({ address: CONTRACTS.AGI_JOB_MANAGER, abi: agiJobManagerAbi, functionName: 'finalizeJob', args: [jobId] });
                         }));
                       }
                       return btns.length > 0 ? <div className="flex gap-1">{btns}</div> : <span className="text-text/20 text-xs">—</span>;
@@ -1981,7 +2104,7 @@ export default function JobsDApp() {
                   {/* Error display */}
                   {(actionError || actionWriteError) && (
                     <div className="rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-400 font-degular-medium">
-                      {actionError || (actionWriteError as Error)?.message?.split('\n')[0] || 'Transaction failed'}
+                      {actionError || decodeRevertReason(actionWriteError)}
                     </div>
                   )}
                 </div>
