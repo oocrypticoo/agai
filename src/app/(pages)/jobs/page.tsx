@@ -559,9 +559,18 @@ export default function JobsDApp() {
     ],
   });
 
-  // Token balance
+  // Token balance (official)
   const { data: tokenBalance } = useReadContract({
     address: CONTRACTS.AGIALPHA_OFFICIAL,
+    abi: erc20Abi,
+    functionName: 'balanceOf',
+    args: address ? [address] : undefined,
+    query: { enabled: !!address },
+  });
+
+  // Token balance (bridged)
+  const { data: tokenBalanceBridged } = useReadContract({
+    address: CONTRACTS.AGIALPHA_BRIDGED,
     abi: erc20Abi,
     functionName: 'balanceOf',
     args: address ? [address] : undefined,
@@ -1215,11 +1224,17 @@ export default function JobsDApp() {
             className="mb-10"
           >
             <h2 className="text-xs uppercase tracking-widest text-text/40 font-degular-medium mb-3">Your Wallet</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="rounded-2xl border border-black/5 dark:border-white/5 bg-white/[0.02] p-5">
-                <span className="text-xs text-text/40 uppercase tracking-wider font-degular-medium">$AGIALPHA Balance</span>
+                <span className="text-xs text-text/40 uppercase tracking-wider font-degular-medium">$AGIALPHA (Official)</span>
                 <p className="text-2xl font-degular-bold text-heading mt-1 tabular-nums">
                   {tokenBalance !== undefined ? formatUnits(tokenBalance as bigint, 18) : '—'}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-black/5 dark:border-white/5 bg-white/[0.02] p-5">
+                <span className="text-xs text-text/40 uppercase tracking-wider font-degular-medium">$AGIALPHA (Bridged)</span>
+                <p className="text-2xl font-degular-bold text-heading mt-1 tabular-nums">
+                  {tokenBalanceBridged !== undefined ? formatUnits(tokenBalanceBridged as bigint, 18) : '—'}
                 </p>
               </div>
               <div className="rounded-2xl border border-black/5 dark:border-white/5 bg-white/[0.02] p-5">
