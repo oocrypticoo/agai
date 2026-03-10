@@ -42,22 +42,31 @@ const DURATION_PRESETS = [
 
 const STEPS = ['Job Details', 'Requirements', 'Review & Pin'] as const;
 
-// ─── IPFS upload via server-side API route ───────────────────────────────────
+// ─── IPFS upload via Pinata (user-provided JWT) ─────────────────────────────
 
-async function pinToIPFS(json: object, name: string): Promise<{ uri: string; cid: string; gateway: string }> {
-  const res = await fetch('/api/pin-ipfs', {
+async function pinToIPFS(json: object, name: string, jwt: string): Promise<{ uri: string; cid: string }> {
+  const blob = new Blob([JSON.stringify(json, null, 2)], { type: 'application/json' });
+  const formData = new FormData();
+  formData.append('file', blob, `${name}.json`);
+  formData.append('pinataMetadata', JSON.stringify({ name }));
+
+  const res = await fetch('https://api.pinata.cloud/pinning/pinFileToIPFS', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ json, name }),
+    headers: { Authorization: `Bearer ${jwt}` },
+    body: formData,
   });
 
   if (!res.ok) {
-    const data = await res.json().catch(() => ({ error: `Upload failed: ${res.status}` }));
-    throw new Error(data.error ?? `Upload failed: ${res.status}`);
+    const text = await res.text();
+    if (res.status === 401) throw new Error('Invalid Pinata JWT. Check your API key.');
+    throw new Error(`Pinata upload failed: ${res.status} ${text}`);
   }
 
-  return res.json();
+  const data = await res.json();
+  return { uri: `ipfs://${data.IpfsHash}`, cid: data.IpfsHash };
 }
+
+const PINATA_JWT_KEY = 'pinata-jwt';
 
 // ─── Component ──────────────────────────────────────────────────────────────
 
@@ -87,6 +96,10 @@ export default function CreateJobBuilder({ open, onClose }: Props) {
   const [details, setDetails] = useState('');
 
   // Step 3: Pinning + submission
+  const [pinataJwt, setPinataJwt] = useState(() => {
+    if (typeof window !== 'undefined') return localStorage.getItem(PINATA_JWT_KEY) ?? '';
+    return '';
+  });
   const [pinning, setPinning] = useState(false);
   const [pinError, setPinError] = useState('');
   const [pinnedURI, setPinnedURI] = useState('');
@@ -186,11 +199,17 @@ export default function CreateJobBuilder({ open, onClose }: Props) {
   }
 
   const handlePin = useCallback(async () => {
+    if (!pinataJwt.trim()) {
+      setPinError('Paste your Pinata JWT above to pin to IPFS.');
+      return;
+    }
     setPinning(true);
     setPinError('');
     try {
+      // Persist JWT for this user
+      localStorage.setItem(PINATA_JWT_KEY, pinataJwt.trim());
       const name = `job-spec-${spec.title.toLowerCase().replace(/\s+/g, '-').slice(0, 40)}-${Date.now()}`;
-      const result = await pinToIPFS(metadata, name);
+      const result = await pinToIPFS(metadata, name, pinataJwt.trim());
       setPinnedURI(result.uri);
       setPinnedCID(result.cid);
     } catch (err) {
@@ -198,7 +217,7 @@ export default function CreateJobBuilder({ open, onClose }: Props) {
     } finally {
       setPinning(false);
     }
-  }, [metadata, spec.title]);
+  }, [metadata, spec.title, pinataJwt]);
 
   function handleApprove() {
     if (!payout) return;
@@ -573,9 +592,21 @@ export default function CreateJobBuilder({ open, onClose }: Props) {
 
                 {!pinnedURI ? (
                   <>
+                    <div className="mb-3">
+                      <label className="text-[10px] text-text/40 uppercase tracking-wider font-degular-medium mb-1 block">
+                        Pinata JWT <span className="normal-case text-text/25">(get one free at pinata.cloud)</span>
+                      </label>
+                      <input
+                        type="password"
+                        value={pinataJwt}
+                        onChange={(e) => setPinataJwt(e.target.value)}
+                        placeholder="Paste your Pinata API JWT..."
+                        className="w-full px-3 py-2 rounded-lg border border-black/5 dark:border-white/5 bg-white/[0.02] text-xs text-heading font-mono placeholder:text-text/20 focus:outline-none focus:border-[#805abe]/30 transition-colors"
+                      />
+                    </div>
                     <button
                       onClick={handlePin}
-                      disabled={pinning}
+                      disabled={pinning || !pinataJwt.trim()}
                       className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#805abe]/10 border border-[#805abe]/20 text-[#805abe] text-sm font-degular-medium hover:bg-[#805abe]/20 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
                     >
                       {pinning ? (
