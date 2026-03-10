@@ -42,30 +42,21 @@ const DURATION_PRESETS = [
 
 const STEPS = ['Job Details', 'Requirements', 'Review & Pin'] as const;
 
-// ─── Pinata IPFS upload ──────────────────────────────────────────────────────
+// ─── IPFS upload via server-side API route ───────────────────────────────────
 
-const PINATA_JWT = process.env.NEXT_PUBLIC_PINATA_JWT ?? '';
-const PINATA_GATEWAY = process.env.NEXT_PUBLIC_PINATA_GATEWAY ?? 'https://gateway.pinata.cloud';
-
-async function pinToIPFS(json: object, name: string): Promise<string> {
-  const blob = new Blob([JSON.stringify(json, null, 2)], { type: 'application/json' });
-  const formData = new FormData();
-  formData.append('file', blob, `${name}.json`);
-  formData.append('pinataMetadata', JSON.stringify({ name }));
-
-  const res = await fetch('https://api.pinata.cloud/pinning/pinFileToIPFS', {
+async function pinToIPFS(json: object, name: string): Promise<{ uri: string; cid: string; gateway: string }> {
+  const res = await fetch('/api/pin-ipfs', {
     method: 'POST',
-    headers: { Authorization: `Bearer ${PINATA_JWT}` },
-    body: formData,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ json, name }),
   });
 
   if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Pinata upload failed: ${res.status} ${text}`);
+    const data = await res.json().catch(() => ({ error: `Upload failed: ${res.status}` }));
+    throw new Error(data.error ?? `Upload failed: ${res.status}`);
   }
 
-  const data = await res.json();
-  return `ipfs://${data.IpfsHash}`;
+  return res.json();
 }
 
 // ─── Component ──────────────────────────────────────────────────────────────
@@ -195,18 +186,13 @@ export default function CreateJobBuilder({ open, onClose }: Props) {
   }
 
   const handlePin = useCallback(async () => {
-    if (!PINATA_JWT) {
-      setPinError('NEXT_PUBLIC_PINATA_JWT not configured. Set it in .env.local');
-      return;
-    }
     setPinning(true);
     setPinError('');
     try {
       const name = `job-spec-${spec.title.toLowerCase().replace(/\s+/g, '-').slice(0, 40)}-${Date.now()}`;
-      const uri = await pinToIPFS(metadata, name);
-      const cid = uri.replace('ipfs://', '');
-      setPinnedURI(uri);
-      setPinnedCID(cid);
+      const result = await pinToIPFS(metadata, name);
+      setPinnedURI(result.uri);
+      setPinnedCID(result.cid);
     } catch (err) {
       setPinError(err instanceof Error ? err.message : 'Upload failed');
     } finally {
@@ -589,7 +575,7 @@ export default function CreateJobBuilder({ open, onClose }: Props) {
                   <>
                     <button
                       onClick={handlePin}
-                      disabled={pinning || !PINATA_JWT}
+                      disabled={pinning}
                       className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#805abe]/10 border border-[#805abe]/20 text-[#805abe] text-sm font-degular-medium hover:bg-[#805abe]/20 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
                     >
                       {pinning ? (
@@ -598,11 +584,6 @@ export default function CreateJobBuilder({ open, onClose }: Props) {
                         <><Upload className="size-4" /> Pin Metadata to IPFS</>
                       )}
                     </button>
-                    {!PINATA_JWT && (
-                      <p className="mt-2 text-[11px] text-amber-400 font-degular">
-                        Set NEXT_PUBLIC_PINATA_JWT in .env.local to enable IPFS pinning.
-                      </p>
-                    )}
                     {pinError && (
                       <p className="mt-2 text-[11px] text-red-400 font-degular break-all">{pinError}</p>
                     )}
@@ -618,7 +599,7 @@ export default function CreateJobBuilder({ open, onClose }: Props) {
                         <Copy className="size-3.5" />
                       </button>
                       <a
-                        href={`${PINATA_GATEWAY}/ipfs/${pinnedCID}`}
+                        href={`https://gateway.pinata.cloud/ipfs/${pinnedCID}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-text/40 hover:text-[#805abe] transition-colors"
