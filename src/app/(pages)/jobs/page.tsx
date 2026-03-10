@@ -65,14 +65,12 @@ function storeTermsSig(address: string, sig: string) {
   localStorage.setItem(getTermsSigKey(address), sig);
 }
 
-/** Extract subdomain label(s) before the parent domain.
+/** Extract the first subdomain label — the contract hashes this against the
+ *  appropriate root node (agentRootNode or alphaAgentRootNode) internally.
  *  "jester.agent.agi.eth" → "jester"
- *  "jester.alpha.agent.agi.eth" → "jester.alpha"
+ *  "jester.alpha.agent.agi.eth" → "jester"
  *  "foo.club.agi.eth" → "foo"  */
 function extractSubdomainLabel(fullName: string): string {
-  for (const parent of ['.agent.agi.eth', '.club.agi.eth']) {
-    if (fullName.endsWith(parent)) return fullName.slice(0, -parent.length);
-  }
   return fullName.split('.')[0];
 }
 
