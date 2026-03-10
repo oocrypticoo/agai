@@ -5,8 +5,9 @@ import {
   Briefcase, Search, Shield, RefreshCw, X, ExternalLink,
   CheckCircle2, Clock, AlertTriangle, XCircle, Eye,
   ChevronDown, ChevronUp, Wallet, Globe, FileCheck, AtSign, ArrowRightLeft,
+  Loader2, Send, Ban, Timer, Gavel, ThumbsUp, ThumbsDown, Flag,
 } from 'lucide-react';
-import { useAccount, useConnect, useSignMessage, useEnsName, usePublicClient, useReadContract, useReadContracts } from 'wagmi';
+import { useAccount, useConnect, useSignMessage, useEnsName, usePublicClient, useReadContract, useReadContracts, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { formatUnits, keccak256, toBytes } from 'viem';
 import { mainnet } from 'wagmi/chains';
 import Footer from '@/app/sections/Footer';
@@ -62,6 +63,11 @@ function hasSignedTerms(address: string | undefined): boolean {
 
 function storeTermsSig(address: string, sig: string) {
   localStorage.setItem(getTermsSigKey(address), sig);
+}
+
+/** Extract subdomain label: "jester.agent.agi.eth" → "jester" */
+function extractSubdomainLabel(fullName: string): string {
+  return fullName.split('.')[0];
 }
 
 function shortenAddress(addr: string): string {
@@ -209,6 +215,10 @@ export default function JobsDApp() {
   const [statusFilter, setStatusFilter] = useState<JobStatusLabel | 'All'>('All');
   const [calcPayout, setCalcPayout] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Job action state
+  const [completionURIInput, setCompletionURIInput] = useState('');
+  const [actionError, setActionError] = useState<string | null>(null);
 
   // Validator addresses for detail modal
   const [validators, setValidators] = useState<{ address: string; type: 'approved' | 'disapproved' }[]>([]);
@@ -587,6 +597,207 @@ export default function JobsDApp() {
   });
 
   // (Write hooks for approve/createJob moved to CreateJobBuilder component)
+
+  // ── Job action write hook ─────────────────────────────────────────────
+  const {
+    writeContract: executeJobAction,
+    data: actionTxHash,
+    isPending: isActionPending,
+    error: actionWriteError,
+    reset: resetAction,
+  } = useWriteContract();
+
+  const { isLoading: isActionConfirming, isSuccess: isActionConfirmed } = useWaitForTransactionReceipt({
+    hash: actionTxHash,
+  });
+
+  // ── User role relative to selected job ────────────────────────────────
+  const userRole = useMemo(() => {
+    if (!selectedJob || !address) return { isEmployer: false, isAssignedAgent: false, hasAgentENS: false, hasClubENS: false };
+    return {
+      isEmployer: selectedJob.employer.toLowerCase() === address.toLowerCase(),
+      isAssignedAgent: selectedJob.assignedAgent.toLowerCase() === address.toLowerCase(),
+      hasAgentENS: !!ensAgent,
+      hasClubENS: !!ensClub,
+    };
+  }, [selectedJob, address, ensAgent, ensClub]);
+
+  // ── Available actions for selected job ────────────────────────────────
+  type LucideIcon = typeof Send;
+  interface JobAction {
+    label: string;
+    icon: LucideIcon;
+    colorClass: string;
+    needsCompletionURI?: boolean;
+    execute: () => void;
+  }
+
+  const actionColorMap: Record<string, string> = {
+    blue: 'bg-blue-500/10 border-blue-500/20 text-blue-400 hover:bg-blue-500/20',
+    red: 'bg-red-500/10 border-red-500/20 text-red-400 hover:bg-red-500/20',
+    emerald: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20',
+    amber: 'bg-amber-500/10 border-amber-500/20 text-amber-400 hover:bg-amber-500/20',
+    cyan: 'bg-cyan-500/10 border-cyan-500/20 text-cyan-400 hover:bg-cyan-500/20',
+    zinc: 'bg-zinc-500/10 border-zinc-500/20 text-zinc-400 hover:bg-zinc-500/20',
+  };
+
+  const availableActions = useMemo((): JobAction[] => {
+    if (!selectedJob || !address || !isConnected) return [];
+    const actions: JobAction[] = [];
+    const jobId = BigInt(selectedJob.id);
+
+    if (selectedJob.status === 'Open') {
+      if (userRole.hasAgentENS && ensAgent) {
+        actions.push({
+          label: 'Apply',
+          icon: Send,
+          colorClass: actionColorMap.blue,
+          execute: () => {
+            setActionError(null);
+            executeJobAction({
+              address: CONTRACTS.AGI_JOB_MANAGER,
+              abi: agiJobManagerAbi,
+              functionName: 'applyForJob',
+              args: [jobId, extractSubdomainLabel(ensAgent), [] as readonly `0x${string}`[]],
+            });
+          },
+        });
+      }
+      if (userRole.isEmployer) {
+        actions.push({
+          label: 'Cancel',
+          icon: Ban,
+          colorClass: actionColorMap.red,
+          execute: () => {
+            setActionError(null);
+            executeJobAction({
+              address: CONTRACTS.AGI_JOB_MANAGER,
+              abi: agiJobManagerAbi,
+              functionName: 'cancelJob',
+              args: [jobId],
+            });
+          },
+        });
+      }
+    }
+
+    if (selectedJob.status === 'Assigned') {
+      if (userRole.isAssignedAgent) {
+        actions.push({
+          label: 'Request Completion',
+          icon: FileCheck,
+          colorClass: actionColorMap.emerald,
+          needsCompletionURI: true,
+          execute: () => {
+            if (!completionURIInput.trim()) {
+              setActionError('Please enter a completion URI');
+              return;
+            }
+            setActionError(null);
+            executeJobAction({
+              address: CONTRACTS.AGI_JOB_MANAGER,
+              abi: agiJobManagerAbi,
+              functionName: 'requestJobCompletion',
+              args: [jobId, completionURIInput.trim()],
+            });
+          },
+        });
+      }
+      actions.push({
+        label: 'Expire',
+        icon: Timer,
+        colorClass: actionColorMap.zinc,
+        execute: () => {
+          setActionError(null);
+          executeJobAction({
+            address: CONTRACTS.AGI_JOB_MANAGER,
+            abi: agiJobManagerAbi,
+            functionName: 'expireJob',
+            args: [jobId],
+          });
+        },
+      });
+    }
+
+    if (selectedJob.status === 'In Review') {
+      if (userRole.hasClubENS && ensClub) {
+        actions.push({
+          label: 'Approve',
+          icon: ThumbsUp,
+          colorClass: actionColorMap.emerald,
+          execute: () => {
+            setActionError(null);
+            executeJobAction({
+              address: CONTRACTS.AGI_JOB_MANAGER,
+              abi: agiJobManagerAbi,
+              functionName: 'validateJob',
+              args: [jobId, extractSubdomainLabel(ensClub), [] as readonly `0x${string}`[]],
+            });
+          },
+        });
+        actions.push({
+          label: 'Disapprove',
+          icon: ThumbsDown,
+          colorClass: actionColorMap.red,
+          execute: () => {
+            setActionError(null);
+            executeJobAction({
+              address: CONTRACTS.AGI_JOB_MANAGER,
+              abi: agiJobManagerAbi,
+              functionName: 'disapproveJob',
+              args: [jobId, extractSubdomainLabel(ensClub), [] as readonly `0x${string}`[]],
+            });
+          },
+        });
+      }
+      if (userRole.isEmployer) {
+        actions.push({
+          label: 'Dispute',
+          icon: Flag,
+          colorClass: actionColorMap.amber,
+          execute: () => {
+            setActionError(null);
+            executeJobAction({
+              address: CONTRACTS.AGI_JOB_MANAGER,
+              abi: agiJobManagerAbi,
+              functionName: 'disputeJob',
+              args: [jobId],
+            });
+          },
+        });
+      }
+      actions.push({
+        label: 'Finalize',
+        icon: Gavel,
+        colorClass: actionColorMap.cyan,
+        execute: () => {
+          setActionError(null);
+          executeJobAction({
+            address: CONTRACTS.AGI_JOB_MANAGER,
+            abi: agiJobManagerAbi,
+            functionName: 'finalizeJob',
+            args: [jobId],
+          });
+        },
+      });
+    }
+
+    return actions;
+  }, [selectedJob, address, isConnected, userRole, ensAgent, ensClub, completionURIInput, executeJobAction]);
+
+  // Reset action state when selected job changes
+  useEffect(() => {
+    setCompletionURIInput('');
+    setActionError(null);
+    resetAction();
+  }, [selectedJob?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Refresh jobs list after action is confirmed
+  useEffect(() => {
+    if (isActionConfirmed) {
+      setRefreshCount(c => c + 1);
+    }
+  }, [isActionConfirmed]);
 
   // ── KPI counts ──────────────────────────────────────────────────────────
 
@@ -1585,6 +1796,77 @@ export default function JobsDApp() {
                   </a>
                 </div>
               </div>
+
+              {/* ── Action Footer ── */}
+              {isConnected && availableActions.length > 0 && (
+                <div className="border-t border-black/10 dark:border-white/10 px-6 py-4 shrink-0 space-y-3">
+                  {/* Completion URI input — only for requestCompletion */}
+                  {availableActions.some(a => a.needsCompletionURI) && (
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={completionURIInput}
+                        onChange={(e) => setCompletionURIInput(e.target.value)}
+                        placeholder="Completion URI (IPFS or https)"
+                        className="flex-1 px-3 py-2 rounded-lg border border-black/5 dark:border-white/5 bg-white/[0.02] text-xs text-heading font-mono placeholder:text-text/20 focus:outline-none focus:border-[#805abe]/30 transition-colors"
+                      />
+                    </div>
+                  )}
+
+                  {/* Action buttons */}
+                  <div className="flex flex-wrap gap-2">
+                    {availableActions.map((action) => {
+                      const Icon = action.icon;
+                      return (
+                        <button
+                          key={action.label}
+                          onClick={action.execute}
+                          disabled={isActionPending || isActionConfirming}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-degular-medium transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed ${action.colorClass}`}
+                        >
+                          <Icon className="size-3.5" />
+                          {action.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Transaction status */}
+                  {isActionPending && (
+                    <div className="flex items-center gap-2 text-xs text-amber-400 font-degular-medium">
+                      <Loader2 className="size-3.5 animate-spin" />
+                      Confirm in wallet...
+                    </div>
+                  )}
+                  {isActionConfirming && (
+                    <div className="flex items-center gap-2 text-xs text-cyan-400 font-degular-medium">
+                      <Loader2 className="size-3.5 animate-spin" />
+                      Waiting for confirmation...
+                    </div>
+                  )}
+                  {isActionConfirmed && actionTxHash && (
+                    <div className="flex items-center gap-2 text-xs text-emerald-400 font-degular-medium">
+                      <CheckCircle2 className="size-3.5" />
+                      Transaction confirmed!
+                      <a
+                        href={`https://etherscan.io/tx/${actionTxHash}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline hover:text-emerald-300 transition-colors"
+                      >
+                        View on Etherscan
+                      </a>
+                    </div>
+                  )}
+
+                  {/* Error display */}
+                  {(actionError || actionWriteError) && (
+                    <div className="rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-400 font-degular-medium">
+                      {actionError || (actionWriteError as Error)?.message?.split('\n')[0] || 'Transaction failed'}
+                    </div>
+                  )}
+                </div>
+              )}
             </motion.div>
           </motion.div>
         )}
