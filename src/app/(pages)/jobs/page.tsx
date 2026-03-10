@@ -1187,11 +1187,35 @@ export default function JobsDApp() {
                       const addr = address?.toLowerCase();
                       const isEmp = addr === job.employer.toLowerCase();
                       const isAgent = addr === job.assignedAgent.toLowerCase();
-                      if (job.status === 'Open' && isEmp) return <span className="text-red-400 text-xs font-degular-medium">Cancel</span>;
-                      if (job.status === 'Open' && ensAgent) return <span className="text-blue-400 text-xs font-degular-medium">Apply</span>;
-                      if (job.status === 'Assigned' && isAgent) return <span className="text-emerald-400 text-xs font-degular-medium">Complete</span>;
-                      if (job.status === 'In Review' && ensClub) return <span className="text-cyan-400 text-xs font-degular-medium">Validate</span>;
-                      if (job.status === 'In Review' && isEmp) return <span className="text-amber-400 text-xs font-degular-medium">Dispute</span>;
+                      const jobId = BigInt(job.id);
+                      const btn = (label: string, colorClass: string, fn: () => void) => (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); fn(); }}
+                          disabled={isActionPending || isActionConfirming}
+                          className={`px-2 py-0.5 rounded-md border text-xs font-degular-medium transition-all disabled:opacity-40 ${colorClass}`}
+                        >
+                          {label}
+                        </button>
+                      );
+                      if (job.status === 'Open' && isEmp) return btn('Cancel', 'bg-red-500/10 border-red-500/20 text-red-400 hover:bg-red-500/20', () => {
+                        setActionError(null);
+                        executeJobAction({ address: CONTRACTS.AGI_JOB_MANAGER, abi: agiJobManagerAbi, functionName: 'cancelJob', args: [jobId] });
+                      });
+                      if (job.status === 'Open' && ensAgent) return btn('Apply', 'bg-blue-500/10 border-blue-500/20 text-blue-400 hover:bg-blue-500/20', () => {
+                        setActionError(null);
+                        executeJobAction({ address: CONTRACTS.AGI_JOB_MANAGER, abi: agiJobManagerAbi, functionName: 'applyForJob', args: [jobId, extractSubdomainLabel(ensAgent!), [] as readonly `0x${string}`[]] });
+                      });
+                      if (job.status === 'Assigned' && isAgent) return btn('Complete', 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20', () => {
+                        setSelectedJob(job); setJobSpec(job.specMeta ?? null);
+                      });
+                      if (job.status === 'In Review' && ensClub) return btn('Validate', 'bg-cyan-500/10 border-cyan-500/20 text-cyan-400 hover:bg-cyan-500/20', () => {
+                        setActionError(null);
+                        executeJobAction({ address: CONTRACTS.AGI_JOB_MANAGER, abi: agiJobManagerAbi, functionName: 'validateJob', args: [jobId, extractSubdomainLabel(ensClub!), [] as readonly `0x${string}`[]] });
+                      });
+                      if (job.status === 'In Review' && isEmp) return btn('Dispute', 'bg-amber-500/10 border-amber-500/20 text-amber-400 hover:bg-amber-500/20', () => {
+                        setActionError(null);
+                        executeJobAction({ address: CONTRACTS.AGI_JOB_MANAGER, abi: agiJobManagerAbi, functionName: 'disputeJob', args: [jobId] });
+                      });
                       return <span className="text-text/20 text-xs">—</span>;
                     })()}
                   </div>
