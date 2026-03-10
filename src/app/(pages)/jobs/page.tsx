@@ -225,6 +225,7 @@ export default function JobsDApp() {
   // Job action state
   const [completionURIInput, setCompletionURIInput] = useState('');
   const [actionError, setActionError] = useState<string | null>(null);
+  const [pendingApplyJobId, setPendingApplyJobId] = useState<number | null>(null);
 
   // Validator addresses for detail modal
   const [validators, setValidators] = useState<{ address: string; type: 'approved' | 'disapproved' }[]>([]);
@@ -604,6 +605,34 @@ export default function JobsDApp() {
 
   // (Write hooks for approve/createJob moved to CreateJobBuilder component)
 
+  // ── Token approval write hook (for agent/validator bonds) ─────────────
+  const {
+    writeContract: approveToken,
+    data: approveTxHash,
+    isPending: isApproving,
+    reset: resetApprove,
+  } = useWriteContract();
+
+  const { isLoading: isApproveConfirming, isSuccess: isApproveConfirmed } = useWaitForTransactionReceipt({
+    hash: approveTxHash,
+  });
+
+  // After approval confirms, refetch allowance and auto-fire pending apply
+  useEffect(() => {
+    if (isApproveConfirmed) {
+      refetchAllowance();
+      if (pendingApplyJobId !== null && ensAgent) {
+        setPendingApplyJobId(null);
+        executeJobAction({
+          address: CONTRACTS.AGI_JOB_MANAGER,
+          abi: agiJobManagerAbi,
+          functionName: 'applyForJob',
+          args: [BigInt(pendingApplyJobId), extractSubdomainLabel(ensAgent), [] as readonly `0x${string}`[]],
+        });
+      }
+    }
+  }, [isApproveConfirmed]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Job action write hook ─────────────────────────────────────────────
   const {
     writeContract: executeJobAction,
@@ -654,18 +683,31 @@ export default function JobsDApp() {
 
     if (selectedJob.status === 'Open') {
       if (userRole.hasAgentENS && ensAgent) {
+        const allowance = tokenAllowance as bigint | undefined;
+        const needsApproval = !allowance || allowance === BigInt(0);
         actions.push({
           label: 'Apply',
           icon: Send,
           colorClass: actionColorMap.blue,
           execute: () => {
             setActionError(null);
-            executeJobAction({
-              address: CONTRACTS.AGI_JOB_MANAGER,
-              abi: agiJobManagerAbi,
-              functionName: 'applyForJob',
-              args: [jobId, extractSubdomainLabel(ensAgent), [] as readonly `0x${string}`[]],
-            });
+            if (needsApproval) {
+              // Store intent to apply after approval
+              setPendingApplyJobId(selectedJob.id);
+              approveToken({
+                address: CONTRACTS.AGIALPHA_OFFICIAL,
+                abi: erc20Abi,
+                functionName: 'approve',
+                args: [CONTRACTS.AGI_JOB_MANAGER, BigInt('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')],
+              });
+            } else {
+              executeJobAction({
+                address: CONTRACTS.AGI_JOB_MANAGER,
+                abi: agiJobManagerAbi,
+                functionName: 'applyForJob',
+                args: [jobId, extractSubdomainLabel(ensAgent), [] as readonly `0x${string}`[]],
+              });
+            }
           },
         });
       }
@@ -795,7 +837,9 @@ export default function JobsDApp() {
   useEffect(() => {
     setCompletionURIInput('');
     setActionError(null);
+    setPendingApplyJobId(null);
     resetAction();
+    resetApprove();
   }, [selectedJob?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Refresh jobs list after action is confirmed
@@ -1217,7 +1261,7 @@ export default function JobsDApp() {
                       const btn = (label: string, colorClass: string, fn: () => void) => (
                         <button
                           onClick={(e) => { e.stopPropagation(); fn(); }}
-                          disabled={isActionPending || isActionConfirming}
+                          disabled={isActionPending || isActionConfirming || isApproving || isApproveConfirming}
                           className={`px-2 py-0.5 rounded-md border text-xs font-degular-medium transition-all disabled:opacity-40 ${colorClass}`}
                         >
                           {label}
@@ -1225,9 +1269,16 @@ export default function JobsDApp() {
                       );
                       const btns: React.ReactNode[] = [];
                       if (job.status === 'Open') {
+                        const allowance = tokenAllowance as bigint | undefined;
+                        const needsApproval = !allowance || allowance === BigInt(0);
                         if (ensAgent) btns.push(btn('Apply', 'bg-blue-500/10 border-blue-500/20 text-blue-400 hover:bg-blue-500/20', () => {
                           setActionError(null);
-                          executeJobAction({ address: CONTRACTS.AGI_JOB_MANAGER, abi: agiJobManagerAbi, functionName: 'applyForJob', args: [jobId, extractSubdomainLabel(ensAgent!), [] as readonly `0x${string}`[]] });
+                          if (needsApproval) {
+                            setPendingApplyJobId(job.id);
+                            approveToken({ address: CONTRACTS.AGIALPHA_OFFICIAL, abi: erc20Abi, functionName: 'approve', args: [CONTRACTS.AGI_JOB_MANAGER, BigInt('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')] });
+                          } else {
+                            executeJobAction({ address: CONTRACTS.AGI_JOB_MANAGER, abi: agiJobManagerAbi, functionName: 'applyForJob', args: [jobId, extractSubdomainLabel(ensAgent!), [] as readonly `0x${string}`[]] });
+                          }
                         }));
                         if (isEmp) btns.push(btn('Cancel', 'bg-red-500/10 border-red-500/20 text-red-400 hover:bg-red-500/20', () => {
                           setActionError(null);
@@ -1891,7 +1942,7 @@ export default function JobsDApp() {
                         <button
                           key={action.label}
                           onClick={action.execute}
-                          disabled={isActionPending || isActionConfirming}
+                          disabled={isActionPending || isActionConfirming || isApproving || isApproveConfirming}
                           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-degular-medium transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed ${action.colorClass}`}
                         >
                           <Icon className="size-3.5" />
