@@ -123,7 +123,7 @@ function BridgeInner() {
     abi: erc20Abi,
     functionName: 'balanceOf',
     args: ethAddress ? [ethAddress] : undefined,
-    query: { enabled: !!ethAddress },
+    query: { enabled: !!ethAddress, refetchInterval: 15000 },
   });
 
   const { data: officialBalance, refetch: refetchOfficial } = useReadContract({
@@ -131,7 +131,7 @@ function BridgeInner() {
     abi: erc20Abi,
     functionName: 'balanceOf',
     args: ethAddress ? [ethAddress] : undefined,
-    query: { enabled: !!ethAddress },
+    query: { enabled: !!ethAddress, refetchInterval: 15000 },
   });
 
   const { data: vaultAllowance, refetch: refetchAllowance } = useReadContract({
@@ -139,7 +139,7 @@ function BridgeInner() {
     abi: erc20Abi,
     functionName: 'allowance',
     args: ethAddress ? [ethAddress, CONTRACTS.MINTER_VAULT] : undefined,
-    query: { enabled: !!ethAddress },
+    query: { enabled: !!ethAddress, refetchInterval: 15000 },
   });
 
   // ── Write: Approve bridged tokens → MinterVault ────────────────────────

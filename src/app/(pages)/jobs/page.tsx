@@ -565,7 +565,7 @@ export default function JobsDApp() {
     abi: erc20Abi,
     functionName: 'balanceOf',
     args: address ? [address] : undefined,
-    query: { enabled: !!address },
+    query: { enabled: !!address, refetchInterval: 15000 },
   });
 
   // Token balance (bridged)
@@ -574,7 +574,7 @@ export default function JobsDApp() {
     abi: erc20Abi,
     functionName: 'balanceOf',
     args: address ? [address] : undefined,
-    query: { enabled: !!address },
+    query: { enabled: !!address, refetchInterval: 15000 },
   });
 
   // Token allowance
@@ -583,7 +583,7 @@ export default function JobsDApp() {
     abi: erc20Abi,
     functionName: 'allowance',
     args: address ? [address, CONTRACTS.AGI_JOB_MANAGER] : undefined,
-    query: { enabled: !!address },
+    query: { enabled: !!address, refetchInterval: 15000 },
   });
 
   // (Write hooks for approve/createJob moved to CreateJobBuilder component)
