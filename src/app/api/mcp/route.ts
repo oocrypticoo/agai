@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { createMcpHandler } from 'mcp-handler';
-import { createPublicClient, http, formatUnits } from 'viem';
+import { createPublicClient, http, formatUnits, encodeFunctionData, parseUnits } from 'viem';
 import { mainnet } from 'viem/chains';
 
 // ── Viem client ──────────────────────────────────────────────────────────────
@@ -63,13 +63,111 @@ const jobManagerAbi = [
 
 const erc20Abi = [
   { type: 'function', name: 'balanceOf', inputs: [{ name: 'account', type: 'address' }], outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view' },
+  { type: 'function', name: 'approve', inputs: [{ name: 'spender', type: 'address' }, { name: 'amount', type: 'uint256' }], outputs: [{ name: '', type: 'bool' }], stateMutability: 'nonpayable' },
+  { type: 'function', name: 'allowance', inputs: [{ name: 'owner', type: 'address' }, { name: 'spender', type: 'address' }], outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view' },
+] as const;
+
+// ── Write function ABIs (for calldata encoding) ─────────────────────────────
+
+const writeAbi = [
+  {
+    type: 'function', name: 'createJob',
+    inputs: [
+      { name: '_jobSpecURI', type: 'string' },
+      { name: '_payout', type: 'uint256' },
+      { name: '_duration', type: 'uint256' },
+      { name: '_details', type: 'string' },
+    ],
+    outputs: [], stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function', name: 'applyForJob',
+    inputs: [
+      { name: '_jobId', type: 'uint256' },
+      { name: 'subdomain', type: 'string' },
+      { name: 'proof', type: 'bytes32[]' },
+    ],
+    outputs: [], stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function', name: 'requestJobCompletion',
+    inputs: [
+      { name: '_jobId', type: 'uint256' },
+      { name: '_jobCompletionURI', type: 'string' },
+    ],
+    outputs: [], stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function', name: 'validateJob',
+    inputs: [
+      { name: '_jobId', type: 'uint256' },
+      { name: 'subdomain', type: 'string' },
+      { name: 'proof', type: 'bytes32[]' },
+    ],
+    outputs: [], stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function', name: 'disapproveJob',
+    inputs: [
+      { name: '_jobId', type: 'uint256' },
+      { name: 'subdomain', type: 'string' },
+      { name: 'proof', type: 'bytes32[]' },
+    ],
+    outputs: [], stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function', name: 'disputeJob',
+    inputs: [{ name: '_jobId', type: 'uint256' }],
+    outputs: [], stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function', name: 'cancelJob',
+    inputs: [{ name: '_jobId', type: 'uint256' }],
+    outputs: [], stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function', name: 'expireJob',
+    inputs: [{ name: '_jobId', type: 'uint256' }],
+    outputs: [], stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function', name: 'finalizeJob',
+    inputs: [{ name: '_jobId', type: 'uint256' }],
+    outputs: [], stateMutability: 'nonpayable',
+  },
 ] as const;
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 const ZERO_ADDR = '0x0000000000000000000000000000000000000000';
 
-function deriveStatus(core: any, validation: any): string {
+// getJobCore returns: [employer, assignedAgent, payout, duration, assignedAt, completed, disputed, expired, agentPayoutPct]
+// getJobValidation returns: [completionRequested, validatorApprovals, validatorDisapprovals, completionRequestedAt, disputedAt]
+function parseCore(raw: any) {
+  return {
+    employer: raw[0] as string,
+    assignedAgent: raw[1] as string,
+    payout: BigInt(raw[2]),
+    duration: BigInt(raw[3]),
+    assignedAt: BigInt(raw[4]),
+    completed: raw[5] as boolean,
+    disputed: raw[6] as boolean,
+    expired: raw[7] as boolean,
+    agentPayoutPct: Number(raw[8]),
+  };
+}
+
+function parseValidation(raw: any) {
+  return {
+    completionRequested: raw[0] as boolean,
+    validatorApprovals: BigInt(raw[1]),
+    validatorDisapprovals: BigInt(raw[2]),
+    completionRequestedAt: BigInt(raw[3]),
+    disputedAt: BigInt(raw[4]),
+  };
+}
+
+function deriveStatus(core: ReturnType<typeof parseCore>, validation: ReturnType<typeof parseValidation>): string {
   if (core.expired) return 'Expired';
   if (core.completed) {
     return validation.validatorDisapprovals > validation.validatorApprovals ? 'Disputed' : 'Completed';
@@ -176,27 +274,31 @@ const handler = createMcpHandler(
 
         const jobs = [];
         for (let i = 0; i < total; i++) {
-          const [core, validation, specURI] = await Promise.all([
-            client.readContract({ address: JOB_MANAGER, abi: jobManagerAbi, functionName: 'getJobCore', args: [BigInt(i)] }),
-            client.readContract({ address: JOB_MANAGER, abi: jobManagerAbi, functionName: 'getJobValidation', args: [BigInt(i)] }),
-            client.readContract({ address: JOB_MANAGER, abi: jobManagerAbi, functionName: 'getJobSpecURI', args: [BigInt(i)] }),
-          ]);
+          try {
+            const [core, validation, specURI] = await Promise.all([
+              client.readContract({ address: JOB_MANAGER, abi: jobManagerAbi, functionName: 'getJobCore', args: [BigInt(i)] }),
+              client.readContract({ address: JOB_MANAGER, abi: jobManagerAbi, functionName: 'getJobValidation', args: [BigInt(i)] }),
+              client.readContract({ address: JOB_MANAGER, abi: jobManagerAbi, functionName: 'getJobSpecURI', args: [BigInt(i)] }),
+            ]);
 
-          const c = core as any;
-          const v = validation as any;
+            const c = parseCore(core);
+            const v = parseValidation(validation);
 
-          jobs.push({
-            jobId: i,
-            status: deriveStatus(c, v),
-            employer: c.employer,
-            assignedAgent: c.assignedAgent === ZERO_ADDR ? null : c.assignedAgent,
-            payout: `${formatUnits(c.payout, 18)} AGIALPHA`,
-            duration: `${Number(c.duration) / 86400} days`,
-            specURI,
-            approvals: Number(v.validatorApprovals),
-            disapprovals: Number(v.validatorDisapprovals),
-            completionRequested: v.completionRequested,
-          });
+            jobs.push({
+              jobId: i,
+              status: deriveStatus(c, v),
+              employer: c.employer,
+              assignedAgent: c.assignedAgent === ZERO_ADDR ? null : c.assignedAgent,
+              payout: `${formatUnits(c.payout, 18)} AGIALPHA`,
+              duration: `${Number(c.duration) / 86400} days`,
+              specURI,
+              approvals: Number(v.validatorApprovals),
+              disapprovals: Number(v.validatorDisapprovals),
+              completionRequested: v.completionRequested,
+            });
+          } catch {
+            // Job may have been cancelled/deleted — skip
+          }
         }
 
         return {
@@ -218,8 +320,8 @@ const handler = createMcpHandler(
           client.readContract({ address: JOB_MANAGER, abi: jobManagerAbi, functionName: 'getJobCompletionURI', args: [BigInt(jobId)] }),
         ]);
 
-        const c = core as any;
-        const v = validation as any;
+        const c = parseCore(core);
+        const v = parseValidation(validation);
 
         const result = {
           jobId,
@@ -230,7 +332,7 @@ const handler = createMcpHandler(
           payoutRaw: c.payout.toString(),
           duration: `${Number(c.duration) / 86400} days`,
           assignedAt: c.assignedAt > 0n ? new Date(Number(c.assignedAt) * 1000).toISOString() : null,
-          agentPayoutPercentage: Number(c.agentPayoutPct),
+          agentPayoutPercentage: c.agentPayoutPct,
           completed: c.completed,
           disputed: c.disputed,
           expired: c.expired,
@@ -318,6 +420,414 @@ const handler = createMcpHandler(
             content: [{ type: 'text', text: JSON.stringify({ uri, error: 'Failed to fetch from IPFS gateway' }) }],
           };
         }
+      },
+    );
+
+    // ── Create Job ──
+    server.tool(
+      'create_job',
+      'Prepare a transaction to create a new job on AGI Alpha. Returns encoded calldata and an ERC-20 approve transaction (agent must approve AGIALPHA to the contract first). Requires the caller to have sufficient AGIALPHA balance.',
+      {
+        jobSpecURI: z.string().describe('IPFS URI pointing to job specification metadata (e.g. ipfs://Qm...)'),
+        payout: z.string().describe('Payout amount in AGIALPHA tokens (e.g. "1000" for 1000 AGIALPHA)'),
+        durationDays: z.number().min(1).max(115).describe('Job duration in days'),
+        details: z.string().describe('On-chain description string for the job'),
+      },
+      async ({ jobSpecURI, payout, durationDays, details }) => {
+        const payoutWei = parseUnits(payout, 18);
+        const durationSec = BigInt(durationDays) * 86400n;
+
+        const approveCalldata = encodeFunctionData({
+          abi: erc20Abi,
+          functionName: 'approve',
+          args: [JOB_MANAGER, payoutWei],
+        });
+
+        const createCalldata = encodeFunctionData({
+          abi: writeAbi,
+          functionName: 'createJob',
+          args: [jobSpecURI, payoutWei, durationSec, details],
+        });
+
+        return {
+          content: [{
+            type: 'text',
+            text: JSON.stringify({
+              instructions: 'Submit these two transactions in order. First approve the AGIALPHA token spend, then create the job.',
+              step1_approve: {
+                to: AGIALPHA,
+                data: approveCalldata,
+                description: `Approve ${payout} AGIALPHA to AGIJobManager`,
+              },
+              step2_createJob: {
+                to: JOB_MANAGER,
+                data: createCalldata,
+                description: `Create job with ${payout} AGIALPHA payout, ${durationDays} day duration`,
+              },
+              notes: {
+                jobSpecURI,
+                payout: `${payout} AGIALPHA`,
+                duration: `${durationDays} days`,
+                agentBond: '5% of payout (posted by agent on apply)',
+                validatorBond: '15% of payout (posted by each validator)',
+              },
+            }, null, 2),
+          }],
+        };
+      },
+    );
+
+    // ── Apply for Job ──
+    server.tool(
+      'apply_for_job',
+      'Prepare a transaction to apply for a job as an agent. Requires an ENS subdomain under agent.agi.eth or alpha.agent.agi.eth. Returns approve + apply calldata. Agent must post a 5% bond.',
+      {
+        jobId: z.number().int().min(0).describe('The job ID to apply for'),
+        ensSubdomain: z.string().describe('Your ENS subdomain label only (e.g. "jester" for jester.agent.agi.eth)'),
+      },
+      async ({ jobId, ensSubdomain }) => {
+        const core = parseCore(await client.readContract({
+          address: JOB_MANAGER, abi: jobManagerAbi, functionName: 'getJobCore', args: [BigInt(jobId)],
+        }));
+
+        const bond = (core.payout * 500n) / 10000n;
+
+        const approveCalldata = encodeFunctionData({
+          abi: erc20Abi,
+          functionName: 'approve',
+          args: [JOB_MANAGER, bond],
+        });
+
+        const applyCalldata = encodeFunctionData({
+          abi: writeAbi,
+          functionName: 'applyForJob',
+          args: [BigInt(jobId), ensSubdomain, []],
+        });
+
+        return {
+          content: [{
+            type: 'text',
+            text: JSON.stringify({
+              instructions: 'Submit these two transactions in order. First approve the bond, then apply.',
+              step1_approve: {
+                to: AGIALPHA,
+                data: approveCalldata,
+                description: `Approve ${formatUnits(bond, 18)} AGIALPHA bond to AGIJobManager`,
+              },
+              step2_apply: {
+                to: JOB_MANAGER,
+                data: applyCalldata,
+                description: `Apply for job #${jobId} with ENS label "${ensSubdomain}"`,
+              },
+              requirements: {
+                ensRequired: `${ensSubdomain}.agent.agi.eth or ${ensSubdomain}.alpha.agent.agi.eth`,
+                bond: `${formatUnits(bond, 18)} AGIALPHA (5% of ${formatUnits(core.payout, 18)} payout)`,
+                note: 'Your wallet must own the ENS subdomain on the NameWrapper contract',
+              },
+            }, null, 2),
+          }],
+        };
+      },
+    );
+
+    // ── Request Job Completion ──
+    server.tool(
+      'request_job_completion',
+      'Prepare a transaction to submit job completion as the assigned agent. Requires a completion URI pointing to IPFS metadata with deliverables.',
+      {
+        jobId: z.number().int().min(0).describe('The job ID'),
+        completionURI: z.string().describe('IPFS URI pointing to completion metadata (e.g. ipfs://Qm...)'),
+      },
+      async ({ jobId, completionURI }) => {
+        const calldata = encodeFunctionData({
+          abi: writeAbi,
+          functionName: 'requestJobCompletion',
+          args: [BigInt(jobId), completionURI],
+        });
+
+        return {
+          content: [{
+            type: 'text',
+            text: JSON.stringify({
+              instructions: 'Submit this transaction from the assigned agent wallet.',
+              transaction: {
+                to: JOB_MANAGER,
+                data: calldata,
+                description: `Request completion for job #${jobId}`,
+              },
+              notes: {
+                completionURI,
+                reviewPeriod: '7 days after submission',
+                requirement: 'Must be called by the assigned agent',
+              },
+            }, null, 2),
+          }],
+        };
+      },
+    );
+
+    // ── Approve Job (Validate) ──
+    server.tool(
+      'approve_job',
+      'Prepare a transaction to approve/validate a job as a validator. Requires an ENS subdomain under club.agi.eth or alpha.club.agi.eth. Validator must post a 15% bond (min 100 AGIALPHA).',
+      {
+        jobId: z.number().int().min(0).describe('The job ID to approve'),
+        ensSubdomain: z.string().describe('Your club ENS subdomain label only (e.g. "jester" for jester.club.agi.eth)'),
+      },
+      async ({ jobId, ensSubdomain }) => {
+        const core = parseCore(await client.readContract({
+          address: JOB_MANAGER, abi: jobManagerAbi, functionName: 'getJobCore', args: [BigInt(jobId)],
+        }));
+
+        const minBond = parseUnits('100', 18);
+        let bond = (core.payout * 1500n) / 10000n;
+        if (bond < minBond) bond = minBond;
+
+        const approveCalldata = encodeFunctionData({
+          abi: erc20Abi,
+          functionName: 'approve',
+          args: [JOB_MANAGER, bond],
+        });
+
+        const validateCalldata = encodeFunctionData({
+          abi: writeAbi,
+          functionName: 'validateJob',
+          args: [BigInt(jobId), ensSubdomain, []],
+        });
+
+        return {
+          content: [{
+            type: 'text',
+            text: JSON.stringify({
+              instructions: 'Submit these two transactions in order. First approve the validator bond, then approve the job.',
+              step1_approve: {
+                to: AGIALPHA,
+                data: approveCalldata,
+                description: `Approve ${formatUnits(bond, 18)} AGIALPHA validator bond`,
+              },
+              step2_validate: {
+                to: JOB_MANAGER,
+                data: validateCalldata,
+                description: `Approve job #${jobId} with ENS label "${ensSubdomain}"`,
+              },
+              requirements: {
+                ensRequired: `${ensSubdomain}.club.agi.eth or ${ensSubdomain}.alpha.club.agi.eth`,
+                bond: `${formatUnits(bond, 18)} AGIALPHA (15% of payout, min 100)`,
+                currentApprovals: 'Use get_job to check current approval count',
+                quorum: '5 approvals needed from 7 quorum',
+              },
+            }, null, 2),
+          }],
+        };
+      },
+    );
+
+    // ── Disapprove Job ──
+    server.tool(
+      'disapprove_job',
+      'Prepare a transaction to disapprove a job as a validator. Requires club.agi.eth ENS subdomain and a 15% validator bond.',
+      {
+        jobId: z.number().int().min(0).describe('The job ID to disapprove'),
+        ensSubdomain: z.string().describe('Your club ENS subdomain label only (e.g. "jester" for jester.club.agi.eth)'),
+      },
+      async ({ jobId, ensSubdomain }) => {
+        const core = parseCore(await client.readContract({
+          address: JOB_MANAGER, abi: jobManagerAbi, functionName: 'getJobCore', args: [BigInt(jobId)],
+        }));
+
+        const minBond = parseUnits('100', 18);
+        let bond = (core.payout * 1500n) / 10000n;
+        if (bond < minBond) bond = minBond;
+
+        const approveCalldata = encodeFunctionData({
+          abi: erc20Abi,
+          functionName: 'approve',
+          args: [JOB_MANAGER, bond],
+        });
+
+        const disapproveCalldata = encodeFunctionData({
+          abi: writeAbi,
+          functionName: 'disapproveJob',
+          args: [BigInt(jobId), ensSubdomain, []],
+        });
+
+        return {
+          content: [{
+            type: 'text',
+            text: JSON.stringify({
+              instructions: 'Submit these two transactions. First approve the bond, then disapprove.',
+              step1_approve: {
+                to: AGIALPHA,
+                data: approveCalldata,
+                description: `Approve ${formatUnits(bond, 18)} AGIALPHA validator bond`,
+              },
+              step2_disapprove: {
+                to: JOB_MANAGER,
+                data: disapproveCalldata,
+                description: `Disapprove job #${jobId} with ENS label "${ensSubdomain}"`,
+              },
+              requirements: {
+                ensRequired: `${ensSubdomain}.club.agi.eth or ${ensSubdomain}.alpha.club.agi.eth`,
+                bond: `${formatUnits(bond, 18)} AGIALPHA`,
+                warning: 'If the job is later approved, disapproving validators get 80% of their bond slashed',
+              },
+            }, null, 2),
+          }],
+        };
+      },
+    );
+
+    // ── Dispute Job ──
+    server.tool(
+      'dispute_job',
+      'Prepare a transaction to dispute a job. Only the employer can dispute during the review period.',
+      {
+        jobId: z.number().int().min(0).describe('The job ID to dispute'),
+      },
+      async ({ jobId }) => {
+        const calldata = encodeFunctionData({
+          abi: writeAbi,
+          functionName: 'disputeJob',
+          args: [BigInt(jobId)],
+        });
+
+        return {
+          content: [{
+            type: 'text',
+            text: JSON.stringify({
+              instructions: 'Submit this transaction from the employer wallet.',
+              transaction: {
+                to: JOB_MANAGER,
+                data: calldata,
+                description: `Dispute job #${jobId}`,
+              },
+              notes: {
+                requirement: 'Must be called by the job employer',
+                disputeReviewPeriod: '14 days',
+              },
+            }, null, 2),
+          }],
+        };
+      },
+    );
+
+    // ── Cancel Job ──
+    server.tool(
+      'cancel_job',
+      'Prepare a transaction to cancel an open (unassigned) job. Only the employer can cancel. Escrow is returned.',
+      {
+        jobId: z.number().int().min(0).describe('The job ID to cancel'),
+      },
+      async ({ jobId }) => {
+        const calldata = encodeFunctionData({
+          abi: writeAbi,
+          functionName: 'cancelJob',
+          args: [BigInt(jobId)],
+        });
+
+        return {
+          content: [{
+            type: 'text',
+            text: JSON.stringify({
+              instructions: 'Submit this transaction from the employer wallet.',
+              transaction: {
+                to: JOB_MANAGER,
+                data: calldata,
+                description: `Cancel job #${jobId} and return escrowed AGIALPHA`,
+              },
+              notes: {
+                requirement: 'Job must be Open (no agent assigned yet)',
+                caller: 'Must be the employer',
+              },
+            }, null, 2),
+          }],
+        };
+      },
+    );
+
+    // ── Finalize Job ──
+    server.tool(
+      'finalize_job',
+      'Prepare a transaction to finalize an approved job. Anyone can call after the challenge period (1 day post-approval). Distributes payout to agent (80%), validators (8%), and protocol.',
+      {
+        jobId: z.number().int().min(0).describe('The job ID to finalize'),
+      },
+      async ({ jobId }) => {
+        const [core, validation] = await Promise.all([
+          client.readContract({ address: JOB_MANAGER, abi: jobManagerAbi, functionName: 'getJobCore', args: [BigInt(jobId)] }),
+          client.readContract({ address: JOB_MANAGER, abi: jobManagerAbi, functionName: 'getJobValidation', args: [BigInt(jobId)] }),
+        ]);
+        const c = parseCore(core);
+        const v = parseValidation(validation);
+
+        const calldata = encodeFunctionData({
+          abi: writeAbi,
+          functionName: 'finalizeJob',
+          args: [BigInt(jobId)],
+        });
+
+        const completionAt = Number(v.completionRequestedAt);
+        const challengeEnd = completionAt > 0 ? new Date((completionAt + 86400) * 1000).toISOString() : 'unknown';
+
+        return {
+          content: [{
+            type: 'text',
+            text: JSON.stringify({
+              instructions: 'Submit this transaction from any wallet after the challenge period ends.',
+              transaction: {
+                to: JOB_MANAGER,
+                data: calldata,
+                description: `Finalize job #${jobId}`,
+              },
+              status: {
+                approvals: Number(v.validatorApprovals),
+                disapprovals: Number(v.validatorDisapprovals),
+                requiredApprovals: 5,
+                challengePeriodEnds: challengeEnd,
+                payout: `${formatUnits(c.payout, 18)} AGIALPHA`,
+              },
+              distribution: {
+                agent: '80% of payout',
+                validators: '8% of payout (split among approving validators)',
+                protocol: 'remainder',
+              },
+            }, null, 2),
+          }],
+        };
+      },
+    );
+
+    // ── Expire Job ──
+    server.tool(
+      'expire_job',
+      'Prepare a transaction to expire an overdue assigned job. Anyone can call if the job duration has elapsed. Employer gets refunded, agent bond is slashed.',
+      {
+        jobId: z.number().int().min(0).describe('The job ID to expire'),
+      },
+      async ({ jobId }) => {
+        const calldata = encodeFunctionData({
+          abi: writeAbi,
+          functionName: 'expireJob',
+          args: [BigInt(jobId)],
+        });
+
+        return {
+          content: [{
+            type: 'text',
+            text: JSON.stringify({
+              instructions: 'Submit this transaction from any wallet. The contract enforces the timing check.',
+              transaction: {
+                to: JOB_MANAGER,
+                data: calldata,
+                description: `Expire job #${jobId}`,
+              },
+              notes: {
+                requirement: 'Job must be assigned and past its duration deadline',
+                effect: 'Employer refunded, agent bond slashed',
+              },
+            }, null, 2),
+          }],
+        };
       },
     );
 
