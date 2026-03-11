@@ -283,8 +283,8 @@ const GithubContributions: React.FC = () => {
             </div>
           </div>
           <div className="w-full flex flex-col justify-center items-center">
-            <div className="mb-2 w-17 h-17 flex justify-center items-center bg-[#080808]/20 dark:bg-[#ffffff]/20 rounded-full">
-              <div className="w-14 h-14 bg-[#080808] dark:bg-[#ffffff] rounded-xl" />
+            <div className="mb-2 w-17 h-17 flex justify-center items-center bg-[#d4a017]/20 dark:bg-[#fbbf24]/20 rounded-full">
+              <div className="w-14 h-14 bg-[#d4a017] dark:bg-[#fbbf24] rounded-xl" />
             </div>
             <span className="font-degular-medium text-[30px] text-heading tracking-wide">
               {totalContributions.toLocaleString()}
