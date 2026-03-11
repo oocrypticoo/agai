@@ -79,6 +79,7 @@ const GithubContributions: React.FC = () => {
         if (count < 10) return "#26a641";
         return "#39d353";
       }
+    }
   };
 
   useEffect(() => {
