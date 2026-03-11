@@ -34,8 +34,8 @@ const Header: React.FC = () => {
     { name: "Whitepaper", link: "/whitepaper" },
     { name: "Roadmap", link: "/roadmap" },
     { name: "Biography", link: "/biography" },
-    { name: "Jobs", link: "/jobs" },
     { name: "Developers", link: "/developers" },
+    { name: "Jobs", link: "/jobs" },
   ];
 
   useEffect(() => {
