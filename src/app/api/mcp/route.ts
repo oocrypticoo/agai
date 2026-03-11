@@ -423,6 +423,65 @@ const handler = createMcpHandler(
       },
     );
 
+    // ── Upload to IPFS ──
+    server.tool(
+      'upload_to_ipfs',
+      'Upload JSON metadata to IPFS via Pinata and return the ipfs:// URI. Use this to upload job spec or completion metadata before calling create_job or request_job_completion. Requires a Pinata JWT — get one free at https://app.pinata.cloud/developers/api-keys (the JWT starts with "eyJ...").',
+      {
+        pinataJwt: z.string().describe('Your Pinata JWT token (starts with "eyJ..."). Get one at https://app.pinata.cloud/developers/api-keys'),
+        metadata: z.record(z.any()).describe('The JSON metadata object to upload (job spec or completion metadata)'),
+        name: z.string().optional().describe('Optional name for the pinned file (e.g. "job-spec-my-task")'),
+      },
+      async ({ pinataJwt, metadata, name }) => {
+        try {
+          const res = await fetch('https://api.pinata.cloud/pinning/pinJSONToIPFS', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${pinataJwt}`,
+            },
+            body: JSON.stringify({
+              pinataContent: metadata,
+              pinataMetadata: { name: name || 'agi-alpha-metadata' },
+            }),
+            signal: AbortSignal.timeout(15000),
+          });
+
+          if (!res.ok) {
+            const err = await res.text();
+            return {
+              content: [{
+                type: 'text' as const,
+                text: JSON.stringify({ error: `Pinata API error (${res.status}): ${err}` }),
+              }],
+            };
+          }
+
+          const data = await res.json();
+          return {
+            content: [{
+              type: 'text' as const,
+              text: JSON.stringify({
+                ipfsUri: `ipfs://${data.IpfsHash}`,
+                ipfsHash: data.IpfsHash,
+                gatewayUrl: `https://gateway.pinata.cloud/ipfs/${data.IpfsHash}`,
+                pinSize: data.PinSize,
+                timestamp: data.Timestamp,
+                note: 'Use the ipfsUri value as the jobSpecURI in create_job or completionURI in request_job_completion.',
+              }, null, 2),
+            }],
+          };
+        } catch (e: any) {
+          return {
+            content: [{
+              type: 'text' as const,
+              text: JSON.stringify({ error: `Upload failed: ${e.message}` }),
+            }],
+          };
+        }
+      },
+    );
+
     // ── Create Job ──
     server.tool(
       'create_job',

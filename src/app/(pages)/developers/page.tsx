@@ -52,6 +52,11 @@ const readTools = [
 
 const writeTools = [
   {
+    name: "upload_to_ipfs",
+    description: "Upload JSON metadata to IPFS via Pinata — returns ipfs:// URI",
+    requires: "Pinata JWT",
+  },
+  {
     name: "create_job",
     description: "Create a new job with AGIALPHA escrow bounty",
     requires: "AGIALPHA balance",
@@ -231,7 +236,7 @@ export default function DevelopersPage() {
                 <span className="text-xs text-text/40 font-degular-medium tracking-wide">
                   Tools
                 </span>
-                <p className="text-sm font-mono text-heading">14</p>
+                <p className="text-sm font-mono text-heading">15</p>
               </div>
             </div>
           </motion.div>
