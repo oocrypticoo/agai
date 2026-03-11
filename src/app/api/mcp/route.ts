@@ -832,10 +832,7 @@ const handler = createMcpHandler(
     );
 
   },
-  {
-    name: 'agi-alpha',
-    version: '1.0.0',
-  },
+  {},
   { basePath: '/api' },
 );
 
