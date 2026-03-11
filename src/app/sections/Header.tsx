@@ -35,6 +35,7 @@ const Header: React.FC = () => {
     { name: "Roadmap", link: "/roadmap" },
     { name: "Biography", link: "/biography" },
     { name: "Jobs", link: "/jobs" },
+    { name: "Developers", link: "/developers" },
   ];
 
   useEffect(() => {
@@ -54,7 +55,7 @@ const Header: React.FC = () => {
         <div className="max-w-7xl mx-auto">
           <div className="px-[10px] lg:px-0 flex justify-between items-center h-16 sm:h-20">
             {/* Logo */}
-            <div className="flex items-center gap-16">
+            <div className="flex items-center gap-10">
               <Link href={"/"}>
                 <img
                   src={theme === "light" ? "/AGIBlack.png" : "/AGIWhite.png"}
@@ -63,12 +64,12 @@ const Header: React.FC = () => {
                 />
               </Link>
               <div className="w-[1.5px] h-[18px] bg-[#929292] dark:bg-[#858585] rounded-full hidden lg:block" />
-              <nav className="hidden lg:flex items-center gap-10">
+              <nav className="hidden lg:flex items-center gap-6">
                 {navigationItems.map((item) => {
                   return (
                     <div
                       key={item.name}
-                      className="text-[16px] md:text-[18px] text-text font-degular leading-relaxed tracking-wide hover:text-[#805abe] dark:hover:text-[#805abe] transition-colors duration-300 cursor-pointer"
+                      className="text-[14px] md:text-[15px] text-text font-degular leading-relaxed tracking-wide hover:text-[#805abe] dark:hover:text-[#805abe] transition-colors duration-300 cursor-pointer"
                       onClick={() => {
                         router.push(`${item.link}`);
                       }}
