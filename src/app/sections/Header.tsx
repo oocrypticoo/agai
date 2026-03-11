@@ -125,8 +125,8 @@ const Header: React.FC = () => {
 
           {/* Mobile Menu */}
           <div
-            className={`lg:hidden border-y border-black/20 dark:border-white/20 rounded-b-2xl bg-heading-invert transition-all duration-500 shadow-lg ${
-              isMobileMenuOpen ? "h-[350px] opacity-100" : "h-0 opacity-0"
+            className={`lg:hidden border-y border-black/20 dark:border-white/20 rounded-b-2xl bg-heading-invert transition-all duration-500 shadow-lg overflow-hidden ${
+              isMobileMenuOpen ? "h-[350px] opacity-100 pointer-events-auto" : "h-0 opacity-0 pointer-events-none"
             }`}
           >
             <div className="h-full px-4 sm:px-6 py-6 sm:py-8 flex flex-col justify-between">
