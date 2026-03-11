@@ -54,32 +54,31 @@ const GithubContributions: React.FC = () => {
     if (theme === "light") {
       if (year === 2025 || year === 2026) {
         if (count === 0) return "#ebedf0";
-        if (count < 40) return "#5B5951";
-        if (count < 70) return "#282421";
-        if (count < 100) return "#171813";
-        return "#080808";
+        if (count < 40) return "#9be9a8";
+        if (count < 70) return "#40c463";
+        if (count < 100) return "#30a14e";
+        return "#216e39";
       } else {
         if (count === 0) return "#ebedf0";
-        if (count < 5) return "#5B5951";
-        if (count < 10) return "#282421";
-        if (count < 20) return "#171813";
-        return "#080808";
+        if (count < 5) return "#9be9a8";
+        if (count < 10) return "#40c463";
+        if (count < 20) return "#30a14e";
+        return "#216e39";
       }
     } else {
       if (year === 2025 || year === 2026) {
-        if (count === 0) return "#1A1A1A";
-        if (count < 40) return "#414141";
-        if (count < 70) return "#848484";
-        if (count < 100) return "#B6B6B6";
-        return "#ffffff";
+        if (count === 0) return "#161b22";
+        if (count < 40) return "#0e4429";
+        if (count < 70) return "#006d32";
+        if (count < 100) return "#26a641";
+        return "#39d353";
       } else {
-        if (count === 0) return "#1A1A1A";
-        if (count < 2) return "#414141";
-        if (count < 5) return "#848484";
-        if (count < 10) return "#B6B6B6";
-        return "#ffffff";
+        if (count === 0) return "#161b22";
+        if (count < 2) return "#0e4429";
+        if (count < 5) return "#006d32";
+        if (count < 10) return "#26a641";
+        return "#39d353";
       }
-    }
   };
 
   useEffect(() => {
