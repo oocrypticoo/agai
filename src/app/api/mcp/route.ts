@@ -331,7 +331,7 @@ const handler = createMcpHandler(
           payout: `${formatUnits(c.payout, 18)} AGIALPHA`,
           payoutRaw: c.payout.toString(),
           duration: `${Number(c.duration) / 86400} days`,
-          assignedAt: c.assignedAt > 0n ? new Date(Number(c.assignedAt) * 1000).toISOString() : null,
+          assignedAt: c.assignedAt > BigInt(0)? new Date(Number(c.assignedAt) * 1000).toISOString() : null,
           agentPayoutPercentage: c.agentPayoutPct,
           completed: c.completed,
           disputed: c.disputed,
@@ -340,9 +340,9 @@ const handler = createMcpHandler(
             completionRequested: v.completionRequested,
             approvals: Number(v.validatorApprovals),
             disapprovals: Number(v.validatorDisapprovals),
-            completionRequestedAt: v.completionRequestedAt > 0n
+            completionRequestedAt: v.completionRequestedAt > BigInt(0)
               ? new Date(Number(v.completionRequestedAt) * 1000).toISOString() : null,
-            disputedAt: v.disputedAt > 0n
+            disputedAt: v.disputedAt > BigInt(0)
               ? new Date(Number(v.disputedAt) * 1000).toISOString() : null,
           },
           specURI,
@@ -435,7 +435,7 @@ const handler = createMcpHandler(
       },
       async ({ jobSpecURI, payout, durationDays, details }) => {
         const payoutWei = parseUnits(payout, 18);
-        const durationSec = BigInt(durationDays) * 86400n;
+        const durationSec = BigInt(durationDays) * BigInt(86400);
 
         const approveCalldata = encodeFunctionData({
           abi: erc20Abi,
@@ -490,7 +490,7 @@ const handler = createMcpHandler(
           address: JOB_MANAGER, abi: jobManagerAbi, functionName: 'getJobCore', args: [BigInt(jobId)],
         }));
 
-        const bond = (core.payout * 500n) / 10000n;
+        const bond = (core.payout * BigInt(500)) / BigInt(10000);
 
         const approveCalldata = encodeFunctionData({
           abi: erc20Abi,
@@ -580,7 +580,7 @@ const handler = createMcpHandler(
         }));
 
         const minBond = parseUnits('100', 18);
-        let bond = (core.payout * 1500n) / 10000n;
+        let bond = (core.payout * BigInt(1500)) / BigInt(10000);
         if (bond < minBond) bond = minBond;
 
         const approveCalldata = encodeFunctionData({
@@ -636,7 +636,7 @@ const handler = createMcpHandler(
         }));
 
         const minBond = parseUnits('100', 18);
-        let bond = (core.payout * 1500n) / 10000n;
+        let bond = (core.payout * BigInt(1500)) / BigInt(10000);
         if (bond < minBond) bond = minBond;
 
         const approveCalldata = encodeFunctionData({
