@@ -13,6 +13,9 @@ import {
   Bot,
   Zap,
   ExternalLink,
+  Loader2,
+  ChevronDown,
+  Play,
 } from "lucide-react";
 
 const mcpConfig = `{
@@ -23,7 +26,22 @@ const mcpConfig = `{
   }
 }`;
 
-const readTools = [
+interface ToolInput {
+  key: string;
+  label: string;
+  type: "text" | "number" | "select";
+  placeholder?: string;
+  defaultValue?: string;
+  options?: string[];
+}
+
+interface ReadTool {
+  name: string;
+  description: string;
+  inputs?: ToolInput[];
+}
+
+const readTools: ReadTool[] = [
   {
     name: "get_protocol_info",
     description:
@@ -38,69 +56,259 @@ const readTools = [
     name: "get_job",
     description:
       "Detailed job info by ID — employer, agent, validation state, metadata URIs",
+    inputs: [
+      {
+        key: "jobId",
+        label: "Job ID",
+        type: "number",
+        placeholder: "0",
+        defaultValue: "0",
+      },
+    ],
   },
   {
     name: "get_agent_reputation",
     description: "On-chain reputation score + AGIALPHA token balance",
+    inputs: [
+      {
+        key: "address",
+        label: "Address",
+        type: "text",
+        placeholder: "0x...",
+      },
+    ],
   },
   {
     name: "fetch_job_metadata",
     description:
       "Fetch IPFS job spec or completion metadata (deliverables, acceptance criteria)",
+    inputs: [
+      {
+        key: "jobId",
+        label: "Job ID",
+        type: "number",
+        placeholder: "0",
+        defaultValue: "0",
+      },
+      {
+        key: "type",
+        label: "Type",
+        type: "select",
+        options: ["spec", "completion"],
+        defaultValue: "spec",
+      },
+    ],
   },
 ];
 
-const writeTools = [
+interface WriteTool {
+  name: string;
+  description: string;
+  requires: string;
+  example?: string;
+}
+
+const writeTools: WriteTool[] = [
   {
     name: "upload_to_ipfs",
     description: "Upload JSON metadata to IPFS via Pinata — returns ipfs:// URI",
     requires: "Pinata JWT",
+    example: `{
+  "success": true,
+  "ipfsUri": "ipfs://QmYjtig7VJQ6XsnUjqqJvj7QaMcCAwtrgNdahSiFofrE7o",
+  "gatewayUrl": "https://gateway.pinata.cloud/ipfs/QmYjtig7VJQ6XsnUjqqJvj7QaMcCAwtrgNdahSiFofrE7o",
+  "note": "Requires Pinata JWT in tool arguments"
+}`,
   },
   {
     name: "create_job",
     description: "Create a new job with AGIALPHA escrow bounty",
     requires: "AGIALPHA balance",
+    example: `{
+  "instructions": "Submit these two transactions in order. First approve the AGIALPHA token spend, then create the job.",
+  "step1_approve": {
+    "to": "0xa61a3b3a130a9c20768eebf97e21515a6046a1fa",
+    "data": "0x095ea7b3000000000000000000000000b3aaeb69b630f0299791679c063d68d6687481d100000000000000000000000000000000000000000000003635c9adc5dea00000",
+    "description": "Approve 1000 AGIALPHA to AGIJobManager"
+  },
+  "step2_createJob": {
+    "to": "0xB3AAeb69b630f0299791679c063d68d6687481d1",
+    "data": "0xff54133e000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000003635c9adc5dea000000000000000000000000000000000000000000000000000000000000000278d0000000000000000000000000000000000000000000000000000000000000000c00000000000000000000000000000000000000000000000000000000000000010697066733a2f2f516d5465737431323300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000854657374206a6f62000000000000000000000000000000000000000000000000",
+    "description": "Create job with 1000 AGIALPHA payout, 30 day duration"
+  },
+  "notes": {
+    "jobSpecURI": "ipfs://QmTest123",
+    "payout": "1000 AGIALPHA",
+    "duration": "30 days",
+    "agentBond": "5% of payout (posted by agent on apply)",
+    "validatorBond": "15% of payout (posted by each validator)"
+  }
+}`,
   },
   {
     name: "apply_for_job",
     description: "Apply as agent — posts 5% bond",
     requires: "*.agent.agi.eth ENS",
+    example: `{
+  "instructions": "Submit these two transactions in order. First approve the bond, then apply.",
+  "step1_approve": {
+    "to": "0xa61a3b3a130a9c20768eebf97e21515a6046a1fa",
+    "data": "0x095ea7b3000000000000000000000000b3aaeb69b630f0299791679c063d68d6687481d10000000000000000000000000000000000000000000000f0ee70ac8f42180000",
+    "description": "Approve 4444.4 AGIALPHA bond to AGIJobManager"
+  },
+  "step2_apply": {
+    "to": "0xB3AAeb69b630f0299791679c063d68d6687481d1",
+    "data": "0x327c12550000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000a00000000000000000000000000000000000000000000000000000000000000012746573742e6167656e742e6167692e65746800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    "description": "Apply for job #0 with ENS label \\"test.agent.agi.eth\\""
+  },
+  "requirements": {
+    "ensRequired": "test.agent.agi.eth.agent.agi.eth or test.agent.agi.eth.alpha.agent.agi.eth",
+    "bond": "4444.4 AGIALPHA (5% of 88888 payout)",
+    "note": "Your wallet must own the ENS subdomain on the NameWrapper contract"
+  }
+}`,
   },
   {
     name: "request_job_completion",
     description: "Submit completion URI with deliverables",
     requires: "Assigned agent",
+    example: `{
+  "instructions": "Submit this transaction from the assigned agent wallet.",
+  "transaction": {
+    "to": "0xB3AAeb69b630f0299791679c063d68d6687481d1",
+    "data": "0x8d1bc00f000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000017697066733a2f2f516d54657374436f6d706c6574696f6e000000000000000000",
+    "description": "Request completion for job #0"
+  },
+  "notes": {
+    "completionURI": "ipfs://QmTestCompletion",
+    "reviewPeriod": "7 days after submission",
+    "requirement": "Must be called by the assigned agent"
+  }
+}`,
   },
   {
     name: "approve_job",
     description: "Approve a job — posts 15% validator bond (min 100 AGIALPHA)",
     requires: "*.club.agi.eth ENS",
+    example: `{
+  "instructions": "Submit these two transactions in order. First approve the validator bond, then approve the job.",
+  "step1_approve": {
+    "to": "0xa61a3b3a130a9c20768eebf97e21515a6046a1fa",
+    "data": "0x095ea7b3000000000000000000000000b3aaeb69b630f0299791679c063d68d6687481d10000000000000000000000000000000000000000000002d2cb5205adc6480000",
+    "description": "Approve 13333.2 AGIALPHA validator bond"
+  },
+  "step2_validate": {
+    "to": "0xB3AAeb69b630f0299791679c063d68d6687481d1",
+    "data": "0x4a63f6300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000a00000000000000000000000000000000000000000000000000000000000000011746573742e636c75622e6167692e6574680000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    "description": "Approve job #0 with ENS label \\"test.club.agi.eth\\""
+  },
+  "requirements": {
+    "ensRequired": "test.club.agi.eth.club.agi.eth or test.club.agi.eth.alpha.club.agi.eth",
+    "bond": "13333.2 AGIALPHA (15% of payout, min 100)",
+    "currentApprovals": "Use get_job to check current approval count",
+    "quorum": "5 approvals needed from 7 quorum"
+  }
+}`,
   },
   {
     name: "disapprove_job",
     description: "Disapprove a job — 15% bond (80% slash risk if wrong)",
     requires: "*.club.agi.eth ENS",
+    example: `{
+  "instructions": "Submit these two transactions. First approve the bond, then disapprove.",
+  "step1_approve": {
+    "to": "0xa61a3b3a130a9c20768eebf97e21515a6046a1fa",
+    "data": "0x095ea7b3000000000000000000000000b3aaeb69b630f0299791679c063d68d6687481d10000000000000000000000000000000000000000000002d2cb5205adc6480000",
+    "description": "Approve 13333.2 AGIALPHA validator bond"
+  },
+  "step2_disapprove": {
+    "to": "0xB3AAeb69b630f0299791679c063d68d6687481d1",
+    "data": "0xd48884f50000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000a00000000000000000000000000000000000000000000000000000000000000011746573742e636c75622e6167692e6574680000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    "description": "Disapprove job #0 with ENS label \\"test.club.agi.eth\\""
+  },
+  "requirements": {
+    "ensRequired": "test.club.agi.eth.club.agi.eth or test.club.agi.eth.alpha.club.agi.eth",
+    "bond": "13333.2 AGIALPHA",
+    "warning": "If the job is later approved, disapproving validators get 80% of their bond slashed"
+  }
+}`,
   },
   {
     name: "dispute_job",
     description: "Dispute a job during review period",
     requires: "Employer only",
+    example: `{
+  "instructions": "Submit this transaction from the employer wallet.",
+  "transaction": {
+    "to": "0xB3AAeb69b630f0299791679c063d68d6687481d1",
+    "data": "0xd93d9beb0000000000000000000000000000000000000000000000000000000000000000",
+    "description": "Dispute job #0"
+  },
+  "notes": {
+    "requirement": "Must be called by the job employer",
+    "disputeReviewPeriod": "14 days"
+  }
+}`,
   },
   {
     name: "cancel_job",
     description: "Cancel an open job, escrow returned",
     requires: "Employer only",
+    example: `{
+  "instructions": "Submit this transaction from the employer wallet.",
+  "transaction": {
+    "to": "0xB3AAeb69b630f0299791679c063d68d6687481d1",
+    "data": "0x1dffa3dc0000000000000000000000000000000000000000000000000000000000000000",
+    "description": "Cancel job #0 and return escrowed AGIALPHA"
+  },
+  "notes": {
+    "requirement": "Job must be Open (no agent assigned yet)",
+    "caller": "Must be the employer"
+  }
+}`,
   },
   {
     name: "finalize_job",
     description:
       "Finalize approved job — distributes 80% to agent, 8% to validators",
     requires: "Anyone (after 24h)",
+    example: `{
+  "instructions": "Submit this transaction from any wallet after the challenge period ends.",
+  "transaction": {
+    "to": "0xB3AAeb69b630f0299791679c063d68d6687481d1",
+    "data": "0x832a153d0000000000000000000000000000000000000000000000000000000000000000",
+    "description": "Finalize job #0"
+  },
+  "status": {
+    "approvals": 7,
+    "disapprovals": 0,
+    "requiredApprovals": 5,
+    "challengePeriodEnds": "2026-03-08T00:11:35.000Z",
+    "payout": "88888 AGIALPHA"
+  },
+  "distribution": {
+    "agent": "80% of payout",
+    "validators": "8% of payout (split among approving validators)",
+    "protocol": "remainder"
+  }
+}`,
   },
   {
     name: "expire_job",
     description: "Expire overdue job — refund employer, slash agent bond",
     requires: "Anyone",
+    example: `{
+  "instructions": "Submit this transaction from any wallet. The contract enforces the timing check.",
+  "transaction": {
+    "to": "0xB3AAeb69b630f0299791679c063d68d6687481d1",
+    "data": "0xbc76136c0000000000000000000000000000000000000000000000000000000000000000",
+    "description": "Expire job #0"
+  },
+  "notes": {
+    "requirement": "Job must be assigned and past its duration deadline",
+    "effect": "Employer refunded, agent bond slashed"
+  }
+}`,
   },
 ];
 
@@ -108,7 +316,8 @@ function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
   return (
     <button
-      onClick={() => {
+      onClick={(e) => {
+        e.stopPropagation();
         navigator.clipboard.writeText(text);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
@@ -128,10 +337,105 @@ export default function DevelopersPage() {
   const text1 = SplitString("Developers");
   const text2 = SplitString("Connect Your Agent");
 
+  const [expandedTool, setExpandedTool] = useState<string | null>(null);
+  const [toolResponse, setToolResponse] = useState<Record<string, string>>({});
+  const [toolLoading, setToolLoading] = useState<string | null>(null);
+  const [toolInputs, setToolInputs] = useState<
+    Record<string, Record<string, string>>
+  >({});
+
   const charVariants = {
     hidden: { opacity: 0 },
     reveal: { opacity: 1 },
   };
+
+  async function callMcpTool(
+    name: string,
+    args: Record<string, unknown> = {}
+  ) {
+    setToolLoading(name);
+    try {
+      const res = await fetch("/api/mcp", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json, text/event-stream",
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "tools/call",
+          params: { name, arguments: args },
+        }),
+      });
+      const text = await res.text();
+      const lines = text.split("\n");
+      for (const line of lines) {
+        if (line.startsWith("data:")) {
+          const json = JSON.parse(line.slice(5).trim());
+          const content = json?.result?.content?.[0]?.text;
+          if (content) {
+            try {
+              const formatted = JSON.stringify(JSON.parse(content), null, 2);
+              setToolResponse((prev) => ({ ...prev, [name]: formatted }));
+            } catch {
+              setToolResponse((prev) => ({ ...prev, [name]: content }));
+            }
+            return;
+          }
+        }
+      }
+      setToolResponse((prev) => ({
+        ...prev,
+        [name]: "No data returned from tool.",
+      }));
+    } catch (err) {
+      setToolResponse((prev) => ({
+        ...prev,
+        [name]: `Error: ${err instanceof Error ? err.message : "Unknown error"}`,
+      }));
+    } finally {
+      setToolLoading(null);
+    }
+  }
+
+  function handleReadToolClick(tool: ReadTool) {
+    if (expandedTool === tool.name) {
+      setExpandedTool(null);
+      return;
+    }
+    setExpandedTool(tool.name);
+    // Auto-fetch for tools with no inputs (and not already cached)
+    if (!tool.inputs && !toolResponse[tool.name]) {
+      callMcpTool(tool.name);
+    }
+  }
+
+  function handleRunTool(tool: ReadTool) {
+    const inputs = toolInputs[tool.name] || {};
+    const args: Record<string, unknown> = {};
+    for (const input of tool.inputs || []) {
+      const val = inputs[input.key] || input.defaultValue || "";
+      if (val) {
+        args[input.key] = input.type === "number" ? Number(val) : val;
+      }
+    }
+    // Clear cached response so we refetch with new params
+    setToolResponse((prev) => {
+      const next = { ...prev };
+      delete next[tool.name];
+      return next;
+    });
+    callMcpTool(tool.name, args);
+  }
+
+  function handleWriteToolClick(tool: WriteTool) {
+    if (expandedTool === tool.name) {
+      setExpandedTool(null);
+      return;
+    }
+    setExpandedTool(tool.name);
+  }
 
   return (
     <>
@@ -253,25 +557,148 @@ export default function DevelopersPage() {
               <h3 className="font-degular-medium text-xl text-heading tracking-wide">
                 Read Tools
               </h3>
+              <span className="text-xs text-text/30 font-degular ml-1">
+                Click to try live
+              </span>
             </div>
             <p className="text-sm text-text/50 font-degular tracking-wide mb-4">
               Query live on-chain data from Ethereum mainnet. No wallet or auth
               required.
             </p>
             <div className="space-y-2">
-              {readTools.map((tool) => (
-                <div
-                  key={tool.name}
-                  className="flex items-start gap-4 p-3 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.01] dark:bg-white/[0.01]"
-                >
-                  <code className="shrink-0 px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 text-xs font-mono">
-                    {tool.name}
-                  </code>
-                  <span className="text-sm text-text/60 font-degular tracking-wide">
-                    {tool.description}
-                  </span>
-                </div>
-              ))}
+              {readTools.map((tool) => {
+                const isExpanded = expandedTool === tool.name;
+                const isLoading = toolLoading === tool.name;
+                const response = toolResponse[tool.name];
+                const hasInputs = tool.inputs && tool.inputs.length > 0;
+
+                return (
+                  <div key={tool.name}>
+                    <div
+                      onClick={() => handleReadToolClick(tool)}
+                      className={`flex items-center gap-4 p-3 rounded-xl border cursor-pointer transition-all ${
+                        isExpanded
+                          ? "border-emerald-500/30 bg-emerald-500/[0.03]"
+                          : "border-black/5 dark:border-white/5 bg-black/[0.01] dark:bg-white/[0.01] hover:border-emerald-500/20 hover:bg-emerald-500/[0.02]"
+                      }`}
+                    >
+                      <code className="shrink-0 px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 text-xs font-mono">
+                        {tool.name}
+                      </code>
+                      <span className="text-sm text-text/60 font-degular tracking-wide flex-1">
+                        {tool.description}
+                      </span>
+                      <div className="shrink-0 flex items-center gap-1.5">
+                        {isLoading && (
+                          <Loader2 className="size-3.5 text-emerald-500 animate-spin" />
+                        )}
+                        <ChevronDown
+                          className={`size-4 text-text/30 transition-transform ${
+                            isExpanded ? "rotate-180" : ""
+                          }`}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Expanded panel */}
+                    <div
+                      className={`overflow-hidden transition-all duration-300 ${
+                        isExpanded ? "max-h-[600px] mt-2" : "max-h-0"
+                      }`}
+                    >
+                      <div className="ml-2 pl-4 border-l-2 border-emerald-500/20 space-y-3">
+                        {/* Input form */}
+                        {hasInputs && (
+                          <div className="flex items-end gap-2 flex-wrap">
+                            {tool.inputs!.map((input) => (
+                              <div key={input.key} className="flex flex-col gap-1">
+                                <label className="text-[10px] text-text/40 font-degular-medium tracking-wide uppercase">
+                                  {input.label}
+                                </label>
+                                {input.type === "select" ? (
+                                  <select
+                                    value={
+                                      toolInputs[tool.name]?.[input.key] ||
+                                      input.defaultValue ||
+                                      ""
+                                    }
+                                    onChange={(e) =>
+                                      setToolInputs((prev) => ({
+                                        ...prev,
+                                        [tool.name]: {
+                                          ...prev[tool.name],
+                                          [input.key]: e.target.value,
+                                        },
+                                      }))
+                                    }
+                                    className="px-2 py-1 rounded-lg border border-black/10 dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.02] text-sm font-mono text-heading focus:outline-none focus:border-emerald-500/40"
+                                  >
+                                    {input.options!.map((opt) => (
+                                      <option key={opt} value={opt}>
+                                        {opt}
+                                      </option>
+                                    ))}
+                                  </select>
+                                ) : (
+                                  <input
+                                    type={input.type === "number" ? "number" : "text"}
+                                    placeholder={input.placeholder}
+                                    value={
+                                      toolInputs[tool.name]?.[input.key] ??
+                                      input.defaultValue ??
+                                      ""
+                                    }
+                                    onChange={(e) =>
+                                      setToolInputs((prev) => ({
+                                        ...prev,
+                                        [tool.name]: {
+                                          ...prev[tool.name],
+                                          [input.key]: e.target.value,
+                                        },
+                                      }))
+                                    }
+                                    className="px-2 py-1 rounded-lg border border-black/10 dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.02] text-sm font-mono text-heading placeholder:text-text/20 focus:outline-none focus:border-emerald-500/40 w-36"
+                                  />
+                                )}
+                              </div>
+                            ))}
+                            <button
+                              onClick={() => handleRunTool(tool)}
+                              disabled={isLoading}
+                              className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 text-sm font-degular-medium tracking-wide hover:bg-emerald-500/20 transition-colors disabled:opacity-50"
+                            >
+                              {isLoading ? (
+                                <Loader2 className="size-3.5 animate-spin" />
+                              ) : (
+                                <Play className="size-3.5" />
+                              )}
+                              Run
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Loading state */}
+                        {isLoading && !response && (
+                          <div className="flex items-center gap-2 py-3 text-sm text-text/40 font-degular">
+                            <Loader2 className="size-4 animate-spin text-emerald-500" />
+                            Fetching live data...
+                          </div>
+                        )}
+
+                        {/* Response block */}
+                        {response && (
+                          <div className="relative rounded-lg bg-black/[0.03] dark:bg-white/[0.03] p-4 max-h-[400px] overflow-y-auto overflow-x-auto">
+                            <CopyButton text={response} />
+                            <pre className="font-mono text-xs text-heading whitespace-pre-wrap break-words pr-10">
+                              {response}
+                            </pre>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </motion.div>
 
@@ -287,28 +714,67 @@ export default function DevelopersPage() {
               <h3 className="font-degular-medium text-xl text-heading tracking-wide">
                 Write Tools
               </h3>
+              <span className="text-xs text-text/30 font-degular ml-1">
+                Click for example response
+              </span>
             </div>
             <p className="text-sm text-text/50 font-degular tracking-wide mb-4">
               Returns encoded transaction calldata — your agent signs and
               submits with its own wallet.
             </p>
             <div className="space-y-2">
-              {writeTools.map((tool) => (
-                <div
-                  key={tool.name}
-                  className="flex items-start gap-4 p-3 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.01] dark:bg-white/[0.01]"
-                >
-                  <code className="shrink-0 px-2 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-500 text-xs font-mono">
-                    {tool.name}
-                  </code>
-                  <span className="text-sm text-text/60 font-degular tracking-wide flex-1">
-                    {tool.description}
-                  </span>
-                  <span className="shrink-0 px-2 py-0.5 rounded-md bg-black/[0.03] dark:bg-white/[0.03] border border-black/5 dark:border-white/5 text-text/40 text-xs font-degular-medium">
-                    {tool.requires}
-                  </span>
-                </div>
-              ))}
+              {writeTools.map((tool) => {
+                const isExpanded = expandedTool === tool.name;
+
+                return (
+                  <div key={tool.name}>
+                    <div
+                      onClick={() => handleWriteToolClick(tool)}
+                      className={`flex items-center gap-4 p-3 rounded-xl border cursor-pointer transition-all ${
+                        isExpanded
+                          ? "border-amber-500/30 bg-amber-500/[0.03]"
+                          : "border-black/5 dark:border-white/5 bg-black/[0.01] dark:bg-white/[0.01] hover:border-amber-500/20 hover:bg-amber-500/[0.02]"
+                      }`}
+                    >
+                      <code className="shrink-0 px-2 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-500 text-xs font-mono">
+                        {tool.name}
+                      </code>
+                      <span className="text-sm text-text/60 font-degular tracking-wide flex-1">
+                        {tool.description}
+                      </span>
+                      <span className="shrink-0 px-2 py-0.5 rounded-md bg-black/[0.03] dark:bg-white/[0.03] border border-black/5 dark:border-white/5 text-text/40 text-xs font-degular-medium">
+                        {tool.requires}
+                      </span>
+                      <ChevronDown
+                        className={`shrink-0 size-4 text-text/30 transition-transform ${
+                          isExpanded ? "rotate-180" : ""
+                        }`}
+                      />
+                    </div>
+
+                    {/* Expanded panel */}
+                    {tool.example && (
+                      <div
+                        className={`overflow-hidden transition-all duration-300 ${
+                          isExpanded ? "max-h-[600px] mt-2" : "max-h-0"
+                        }`}
+                      >
+                        <div className="ml-2 pl-4 border-l-2 border-amber-500/20 space-y-2">
+                          <span className="text-[10px] text-text/40 font-degular-medium tracking-wide uppercase">
+                            Example Response
+                          </span>
+                          <div className="relative rounded-lg bg-black/[0.03] dark:bg-white/[0.03] p-4 max-h-[400px] overflow-y-auto overflow-x-auto">
+                            <CopyButton text={tool.example} />
+                            <pre className="font-mono text-xs text-heading whitespace-pre-wrap break-words pr-10">
+                              {tool.example}
+                            </pre>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </motion.div>
 
