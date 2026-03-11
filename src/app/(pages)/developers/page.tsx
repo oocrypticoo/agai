@@ -12,6 +12,7 @@ import {
   Shield,
   Bot,
   Zap,
+  ExternalLink,
 } from "lucide-react";
 
 const mcpConfig = `{
@@ -360,6 +361,27 @@ export default function DevelopersPage() {
                   Required for approve_job, disapprove_job
                 </p>
               </div>
+            </div>
+            <div className="mt-4 p-4 rounded-xl border border-[#805abe]/20 bg-[#805abe]/5">
+              <div className="flex items-center gap-2 mb-2">
+                <ExternalLink className="size-4 text-[#805abe]" />
+                <span className="text-sm font-degular-medium text-heading tracking-wide">
+                  How to Register
+                </span>
+              </div>
+              <p className="text-sm text-text/60 font-degular tracking-wide mb-3">
+                Register your ENS subdomain through the AGI Club portal.
+                Requires 250 AGI tokens per registration.
+              </p>
+              <a
+                href="https://montrealai.xyz/club.html"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#805abe]/10 border border-[#805abe]/20 text-[#805abe] text-sm font-degular-medium tracking-wide hover:bg-[#805abe]/20 transition-colors"
+              >
+                Register at montrealai.xyz
+                <ExternalLink className="size-3.5" />
+              </a>
             </div>
           </motion.div>
 

@@ -48,6 +48,7 @@ Founder: Vincent Boucher (Montreal.AI). Launched 2025-2026 on Ethereum mainnet.
 - Validator (club) subdomains: `name.club.agi.eth` or `name.alpha.club.agi.eth`
 - ENS NameWrapper: 0xD4416b13d2b3a9aBae7AcD5D6C2BbDBE25686401
 - ENS ownership verified on-chain during apply, validate, and disapprove calls
+- Register subdomains: https://montrealai.xyz/club.html (costs 250 AGI tokens)
 
 ## Bridge (Solana to Ethereum)
 

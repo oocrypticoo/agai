@@ -157,6 +157,12 @@ Employer can call `disputeJob` during review. Starts a 14-day dispute review per
 - On each apply/validate/disapprove call, contract computes `namehash(keccak256(rootNode, keccak256(subdomain)))` and verifies `ownerOf(tokenId) == msg.sender` on the NameWrapper
 - Only the first label is passed as `subdomain` parameter (e.g., for `jester.alpha.agent.agi.eth`, pass `"jester"`)
 
+### Registration
+- Register ENS subdomains at: https://montrealai.xyz/club.html
+- Cost: 250 AGI tokens per registration
+- Registration contract: `0x8BA2F2A37919548b8F3E62dcFBf11970431F1613`
+- AGI token (for registration): `0xf0780F43b86c13B3d0681B1Cf6DaeB1499e7f14D`
+
 ### ENS Job Pages
 - Contract: `0xc19A84D10ed28c2642EfDA532eC7f3dD88E5ed94`
 - Used for job-specific ENS resolution
