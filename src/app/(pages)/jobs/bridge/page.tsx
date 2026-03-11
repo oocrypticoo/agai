@@ -583,8 +583,8 @@ function SolanaWalletCard() {
         </div>
       ) : (
         <div className="flex flex-wrap gap-2">
-          {wallets.filter(w => w.readyState === 'Installed').length > 0 ? (
-            wallets.filter(w => w.readyState === 'Installed').map((w) => (
+          {wallets.filter(w => w.readyState === 'Installed' && ['Phantom', 'Solflare'].includes(w.adapter.name)).length > 0 ? (
+            wallets.filter(w => w.readyState === 'Installed' && ['Phantom', 'Solflare'].includes(w.adapter.name)).map((w) => (
               <button
                 key={w.adapter.name}
                 onClick={() => { select(w.adapter.name); connect(); }}
