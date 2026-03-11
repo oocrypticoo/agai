@@ -64,12 +64,12 @@ const Header: React.FC = () => {
                 />
               </Link>
               <div className="w-[1.5px] h-[18px] bg-[#929292] dark:bg-[#858585] rounded-full hidden lg:block" />
-              <nav className="hidden lg:flex items-center gap-6">
+              <nav className="hidden lg:flex items-center gap-8">
                 {navigationItems.map((item) => {
                   return (
                     <div
                       key={item.name}
-                      className="text-[14px] md:text-[15px] text-text font-degular leading-relaxed tracking-wide hover:text-[#805abe] dark:hover:text-[#805abe] transition-colors duration-300 cursor-pointer"
+                      className="text-[15px] md:text-[16px] text-text font-degular leading-relaxed tracking-wide hover:text-[#805abe] dark:hover:text-[#805abe] transition-colors duration-300 cursor-pointer"
                       onClick={() => {
                         router.push(`${item.link}`);
                       }}
