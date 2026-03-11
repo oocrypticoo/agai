@@ -42,6 +42,7 @@ interface ParsedJob {
   isDisputed: boolean;
   isExpired: boolean;
   isCancelled: boolean;
+  completionRequestedAt: bigint;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -425,9 +426,11 @@ export default function JobsDApp() {
             employer = c[0]; assignedAgent = c[1]; payout = c[2]; duration = c[3];
             completed = c[5]; disputed = c[6]; expired = c[7];
           }
+          let completionRequestedAt = BigInt(0);
           if (val.status === 'success') {
             const v = val.result as readonly [boolean, bigint, bigint, bigint, bigint];
             completionRequested = v[0]; vApprovals = v[1]; vDisapprovals = v[2];
+            completionRequestedAt = v[3];
           }
 
           const hasAgent = assignedAgent !== ZERO_ADDR;
@@ -441,6 +444,7 @@ export default function JobsDApp() {
             isDisputed: disputed,
             isExpired: expired,
             isCancelled: false,
+            completionRequestedAt,
           };
 
           // Status from contract booleans — authoritative
@@ -880,12 +884,26 @@ export default function JobsDApp() {
           },
         });
       }
+      // Challenge period: 86400s (24h) after completion requested
+      const CHALLENGE_PERIOD = 86400;
+      const completionAt = Number(selectedJob.completionRequestedAt);
+      const nowSec = Math.floor(Date.now() / 1000);
+      const finalizeAt = completionAt + CHALLENGE_PERIOD;
+      const canFinalizeNow = completionAt > 0 && nowSec >= finalizeAt;
+      const timeLeft = finalizeAt - nowSec;
+      const hoursLeft = Math.ceil(timeLeft / 3600);
+
       actions.push({
-        label: 'Finalize',
+        label: canFinalizeNow ? 'Finalize' : `Finalize (${hoursLeft}h)`,
         icon: Gavel,
         colorClass: actionColorMap.cyan,
         execute: () => {
           setActionError(null);
+          if (!canFinalizeNow) {
+            const readyDate = new Date(finalizeAt * 1000);
+            setActionError(`Cannot finalize yet. Challenge period ends ${readyDate.toLocaleString()} (~${hoursLeft}h remaining)`);
+            return;
+          }
           executeJobAction({
             address: CONTRACTS.AGI_JOB_MANAGER,
             abi: agiJobManagerAbi,
@@ -1340,6 +1358,7 @@ export default function JobsDApp() {
                       const jobId = BigInt(job.id);
                       const btn = (label: string, colorClass: string, fn: () => void) => (
                         <button
+                          key={label}
                           onClick={(e) => { e.stopPropagation(); fn(); }}
                           disabled={isActionPending || isActionConfirming || isApproving || isApproveConfirming}
                           className={`px-2 py-0.5 rounded-md border text-xs font-degular-medium transition-all disabled:opacity-40 ${colorClass}`}
@@ -1414,10 +1433,22 @@ export default function JobsDApp() {
                           setActionError(null);
                           executeJobAction({ address: CONTRACTS.AGI_JOB_MANAGER, abi: agiJobManagerAbi, functionName: 'disputeJob', args: [jobId] });
                         }));
-                        btns.push(btn('Finalize', 'bg-cyan-500/10 border-cyan-500/20 text-cyan-400 hover:bg-cyan-500/20', () => {
-                          setActionError(null);
-                          executeJobAction({ address: CONTRACTS.AGI_JOB_MANAGER, abi: agiJobManagerAbi, functionName: 'finalizeJob', args: [jobId] });
-                        }));
+                        {
+                          const CP = 86400;
+                          const cAt = Number(job.completionRequestedAt);
+                          const nw = Math.floor(Date.now() / 1000);
+                          const fAt = cAt + CP;
+                          const ready = cAt > 0 && nw >= fAt;
+                          const hLeft = Math.ceil((fAt - nw) / 3600);
+                          btns.push(btn(ready ? 'Finalize' : `Finalize (${hLeft}h)`, 'bg-cyan-500/10 border-cyan-500/20 text-cyan-400 hover:bg-cyan-500/20', () => {
+                            setActionError(null);
+                            if (!ready) {
+                              setActionError(`Cannot finalize yet. Challenge period ends ${new Date(fAt * 1000).toLocaleString()} (~${hLeft}h remaining)`);
+                              return;
+                            }
+                            executeJobAction({ address: CONTRACTS.AGI_JOB_MANAGER, abi: agiJobManagerAbi, functionName: 'finalizeJob', args: [jobId] });
+                          }));
+                        }
                       }
                       return btns.length > 0 ? <div className="flex gap-1">{btns}</div> : <span className="text-text/20 text-xs">—</span>;
                     })()}
