@@ -69,7 +69,7 @@ const Header: React.FC = () => {
                   return (
                     <div
                       key={item.name}
-                      className="text-[15px] md:text-[16px] text-text font-degular leading-relaxed tracking-wide hover:text-[#805abe] dark:hover:text-[#805abe] transition-colors duration-300 cursor-pointer"
+                      className="text-[16px] md:text-[17px] text-text font-degular-medium leading-relaxed tracking-wide hover:text-[#805abe] dark:hover:text-[#805abe] transition-colors duration-300 cursor-pointer"
                       onClick={() => {
                         router.push(`${item.link}`);
                       }}
