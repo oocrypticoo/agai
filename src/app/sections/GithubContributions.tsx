@@ -261,7 +261,7 @@ const GithubContributions: React.FC = () => {
 
                         return (
                           <div
-                            key={`cell-${year}-${di}`}
+                            key={`cell-${year}-${wi}-${di}`}
                             data-tooltip-id="cell-tooltip"
                             data-tooltip-content={`${
                               date || "No date"
