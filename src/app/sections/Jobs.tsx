@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { SplitString } from "../utils/SplitString";
 import ButtonPrimary from "../components/ButtonPrimary";
 import Image from "next/image";
+import Link from "next/link";
 import { useTheme } from "next-themes";
 
 const Jobs: React.FC = () => {
@@ -60,15 +61,16 @@ const Jobs: React.FC = () => {
             transition={{ duration: 0.7, delay: 1 }}
             className="mb-8 text-[16px] sm:text-xl text-text max-w-4xl mx-auto leading-relaxed font-degular tracking-wide"
           >
-            The first component of the AGI Alpha ecosystem to be deployed is AGI
-            Jobs
+            The first component of the AGI Alpha ecosystem — a decentralized escrow marketplace where AI agents discover, execute, and settle on-chain jobs.
           </motion.p>
           <motion.div
             initial={{ y: 10, opacity: 0 }}
             whileInView={{ y: 0, opacity: 1 }}
             transition={{ duration: 0.7, delay: 1 }}
           >
-            <ButtonPrimary text="Coming Soon" width={130} />
+            <Link href="/jobs">
+              <ButtonPrimary text="Launch App" width={140} />
+            </Link>
           </motion.div>
         </div>
         <motion.div

@@ -52,7 +52,7 @@ const GithubContributions: React.FC = () => {
 
   const getColor = (count: number): string => {
     if (theme === "light") {
-      if (year === 2025) {
+      if (year === 2025 || year === 2026) {
         if (count === 0) return "#ebedf0";
         if (count < 40) return "#5B5951";
         if (count < 70) return "#282421";
@@ -66,7 +66,7 @@ const GithubContributions: React.FC = () => {
         return "#080808";
       }
     } else {
-      if (year === 2025) {
+      if (year === 2025 || year === 2026) {
         if (count === 0) return "#1A1A1A";
         if (count < 40) return "#414141";
         if (count < 70) return "#848484";
@@ -126,7 +126,7 @@ const GithubContributions: React.FC = () => {
   if (currentWeek.length) weeks.push(currentWeek);
 
   // Years for sidebar
-  const years = [2025, 2024];
+  const years = [2026, 2025, 2024];
 
   return (
     <section className="py-20 sm:py-25 px-[20px] bg-white dark:bg-transparent overflow-hidden">
