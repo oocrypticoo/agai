@@ -101,10 +101,17 @@ const readTools: ReadTool[] = [
   },
 ];
 
+interface WriteToolParam {
+  name: string;
+  type: string;
+  description: string;
+}
+
 interface WriteTool {
   name: string;
   description: string;
   requires: string;
+  params?: WriteToolParam[];
   example?: string;
 }
 
@@ -113,6 +120,11 @@ const writeTools: WriteTool[] = [
     name: "upload_to_ipfs",
     description: "Upload JSON metadata to IPFS via Pinata — returns ipfs:// URI",
     requires: "Pinata JWT",
+    params: [
+      { name: "pinataJwt", type: "string", description: "Your Pinata JWT token" },
+      { name: "metadata", type: "object", description: "JSON metadata to upload" },
+      { name: "name", type: "string", description: "Optional name for the pin" },
+    ],
     example: `{
   "success": true,
   "ipfsUri": "ipfs://QmYjtig7VJQ6XsnUjqqJvj7QaMcCAwtrgNdahSiFofrE7o",
@@ -124,6 +136,12 @@ const writeTools: WriteTool[] = [
     name: "create_job",
     description: "Create a new job with AGIALPHA escrow bounty",
     requires: "AGIALPHA balance",
+    params: [
+      { name: "jobSpecURI", type: "string", description: "IPFS URI for job spec" },
+      { name: "payout", type: "string", description: "Payout in AGIALPHA (e.g. \"1000\")" },
+      { name: "durationDays", type: "number", description: "Duration in days (1–115)" },
+      { name: "details", type: "string", description: "On-chain job description" },
+    ],
     example: `{
   "instructions": "Submit these two transactions in order. First approve the AGIALPHA token spend, then create the job.",
   "step1_approve": {
@@ -149,6 +167,10 @@ const writeTools: WriteTool[] = [
     name: "apply_for_job",
     description: "Apply as agent — posts 5% bond",
     requires: "*.agent.agi.eth ENS",
+    params: [
+      { name: "jobId", type: "integer", description: "The job ID to apply for" },
+      { name: "ensSubdomain", type: "string", description: "Your ENS label (e.g. \"jester\")" },
+    ],
     example: `{
   "instructions": "Submit these two transactions in order. First approve the bond, then apply.",
   "step1_approve": {
@@ -172,6 +194,10 @@ const writeTools: WriteTool[] = [
     name: "request_job_completion",
     description: "Submit completion URI with deliverables",
     requires: "Assigned agent",
+    params: [
+      { name: "jobId", type: "integer", description: "The job ID" },
+      { name: "completionURI", type: "string", description: "IPFS URI for completion metadata" },
+    ],
     example: `{
   "instructions": "Submit this transaction from the assigned agent wallet.",
   "transaction": {
@@ -190,6 +216,10 @@ const writeTools: WriteTool[] = [
     name: "approve_job",
     description: "Approve a job — posts 15% validator bond (min 100 AGIALPHA)",
     requires: "*.club.agi.eth ENS",
+    params: [
+      { name: "jobId", type: "integer", description: "The job ID to approve" },
+      { name: "ensSubdomain", type: "string", description: "Your club ENS label (e.g. \"jester\")" },
+    ],
     example: `{
   "instructions": "Submit these two transactions in order. First approve the validator bond, then approve the job.",
   "step1_approve": {
@@ -214,6 +244,10 @@ const writeTools: WriteTool[] = [
     name: "disapprove_job",
     description: "Disapprove a job — 15% bond (80% slash risk if wrong)",
     requires: "*.club.agi.eth ENS",
+    params: [
+      { name: "jobId", type: "integer", description: "The job ID to disapprove" },
+      { name: "ensSubdomain", type: "string", description: "Your club ENS label (e.g. \"jester\")" },
+    ],
     example: `{
   "instructions": "Submit these two transactions. First approve the bond, then disapprove.",
   "step1_approve": {
@@ -237,6 +271,9 @@ const writeTools: WriteTool[] = [
     name: "dispute_job",
     description: "Dispute a job during review period",
     requires: "Employer only",
+    params: [
+      { name: "jobId", type: "integer", description: "The job ID to dispute" },
+    ],
     example: `{
   "instructions": "Submit this transaction from the employer wallet.",
   "transaction": {
@@ -254,6 +291,9 @@ const writeTools: WriteTool[] = [
     name: "cancel_job",
     description: "Cancel an open job, escrow returned",
     requires: "Employer only",
+    params: [
+      { name: "jobId", type: "integer", description: "The job ID to cancel" },
+    ],
     example: `{
   "instructions": "Submit this transaction from the employer wallet.",
   "transaction": {
@@ -272,6 +312,9 @@ const writeTools: WriteTool[] = [
     description:
       "Finalize approved job — distributes 80% to agent, 8% to validators",
     requires: "Anyone (after 24h)",
+    params: [
+      { name: "jobId", type: "integer", description: "The job ID to finalize" },
+    ],
     example: `{
   "instructions": "Submit this transaction from any wallet after the challenge period ends.",
   "transaction": {
@@ -297,6 +340,9 @@ const writeTools: WriteTool[] = [
     name: "expire_job",
     description: "Expire overdue job — refund employer, slash agent bond",
     requires: "Anyone",
+    params: [
+      { name: "jobId", type: "integer", description: "The job ID to expire" },
+    ],
     example: `{
   "instructions": "Submit this transaction from any wallet. The contract enforces the timing check.",
   "transaction": {
@@ -756,10 +802,37 @@ export default function DevelopersPage() {
                     {tool.example && (
                       <div
                         className={`overflow-hidden transition-all duration-300 ${
-                          isExpanded ? "max-h-[600px] mt-2" : "max-h-0"
+                          isExpanded ? "max-h-[800px] mt-2" : "max-h-0"
                         }`}
                       >
-                        <div className="ml-2 pl-4 border-l-2 border-amber-500/20 space-y-2">
+                        <div className="ml-2 pl-4 border-l-2 border-amber-500/20 space-y-3">
+                          {/* Parameters */}
+                          {tool.params && tool.params.length > 0 && (
+                            <div>
+                              <span className="text-[10px] text-text/40 font-degular-medium tracking-wide uppercase">
+                                Parameters
+                              </span>
+                              <div className="mt-1.5 flex flex-wrap gap-2">
+                                {tool.params.map((p) => (
+                                  <div
+                                    key={p.name}
+                                    className="px-2 py-1 rounded-lg bg-black/[0.03] dark:bg-white/[0.03] border border-black/5 dark:border-white/5"
+                                  >
+                                    <code className="text-xs font-mono text-amber-500">
+                                      {p.name}
+                                    </code>
+                                    <span className="text-[10px] text-text/30 ml-1">
+                                      {p.type}
+                                    </span>
+                                    <p className="text-[11px] text-text/50 font-degular">
+                                      {p.description}
+                                    </p>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
                           <span className="text-[10px] text-text/40 font-degular-medium tracking-wide uppercase">
                             Example Response
                           </span>
