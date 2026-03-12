@@ -1,13 +1,17 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
-import { createPublicClient, http } from "viem";
+import { createPublicClient, http, fallback } from "viem";
 import { mainnet } from "viem/chains";
 import { useEnsCounts } from "../hooks/useEnsCounts";
 import { motion } from "framer-motion";
 
 const publicClient = createPublicClient({
   chain: mainnet,
-  transport: http("https://eth.llamarpc.com"),
+  transport: fallback([
+    http("https://ethereum-rpc.publicnode.com"),
+    http("https://eth.llamarpc.com"),
+    http("https://rpc.ankr.com/eth"),
+  ]),
 });
 
 const AGI_JOB_MANAGER = "0xB3AAeb69b630f0299791679c063d68d6687481d1" as const;
