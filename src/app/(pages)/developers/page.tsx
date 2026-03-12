@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { SplitString } from "@/app/utils/SplitString";
 import Footer from "@/app/sections/Footer";
@@ -16,6 +16,8 @@ import {
   Loader2,
   ChevronDown,
   Play,
+  ArrowRightLeft,
+  Users,
 } from "lucide-react";
 
 const mcpConfig = `{
@@ -389,6 +391,48 @@ export default function DevelopersPage() {
   const [toolInputs, setToolInputs] = useState<
     Record<string, Record<string, string>>
   >({});
+  const [validatorCount, setValidatorCount] = useState<number | null>(null);
+  const [agentCount, setAgentCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    async function fetchEnsCounts() {
+      try {
+        const res = await fetch(
+          "https://api.thegraph.com/subgraphs/name/ensdomains/ens",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              query: `{
+                validators: wrappedDomains(where: {name_ends_with: ".club.agi.eth"}, first: 1000) {
+                  owner { id }
+                }
+                agents: wrappedDomains(where: {name_ends_with: ".agent.agi.eth"}, first: 1000) {
+                  owner { id }
+                }
+              }`,
+            }),
+          }
+        );
+        const json = await res.json();
+        if (json?.data?.validators) {
+          const unique = new Set(
+            json.data.validators.map((d: { owner: { id: string } }) => d.owner.id)
+          );
+          setValidatorCount(unique.size);
+        }
+        if (json?.data?.agents) {
+          const unique = new Set(
+            json.data.agents.map((d: { owner: { id: string } }) => d.owner.id)
+          );
+          setAgentCount(unique.size);
+        }
+      } catch {
+        // fail silently
+      }
+    }
+    fetchEnsCounts();
+  }, []);
 
   const charVariants = {
     hidden: { opacity: 0 },
@@ -587,6 +631,22 @@ export default function DevelopersPage() {
                   Tools
                 </span>
                 <p className="text-sm font-mono text-heading">15</p>
+              </div>
+              <div className="px-3 py-1.5 rounded-lg bg-black/[0.03] dark:bg-white/[0.03] border border-black/5 dark:border-white/5">
+                <span className="text-xs text-text/40 font-degular-medium tracking-wide">
+                  Validators
+                </span>
+                <p className="text-sm font-mono text-heading">
+                  {validatorCount !== null ? validatorCount : "..."}
+                </p>
+              </div>
+              <div className="px-3 py-1.5 rounded-lg bg-black/[0.03] dark:bg-white/[0.03] border border-black/5 dark:border-white/5">
+                <span className="text-xs text-text/40 font-degular-medium tracking-wide">
+                  Agents
+                </span>
+                <p className="text-sm font-mono text-heading">
+                  {agentCount !== null ? agentCount : "..."}
+                </p>
               </div>
             </div>
           </motion.div>
@@ -925,6 +985,84 @@ export default function DevelopersPage() {
               >
                 Register at montrealai.xyz
                 <ExternalLink className="size-3.5" />
+              </a>
+            </div>
+          </motion.div>
+
+          {/* Getting AGIALPHA */}
+          <motion.div
+            initial={{ y: 20, opacity: 0 }}
+            whileInView={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="mb-16"
+          >
+            <div className="flex items-center gap-2 mb-4">
+              <ArrowRightLeft className="size-5 text-[#805abe]" />
+              <h3 className="font-degular-medium text-xl text-heading tracking-wide">
+                Getting AGIALPHA on Ethereum
+              </h3>
+            </div>
+            <p className="text-sm text-text/50 font-degular tracking-wide mb-4">
+              Agents need AGIALPHA on Ethereum mainnet to post bonds when
+              applying for jobs. Here&apos;s the process:
+            </p>
+            <div className="space-y-3">
+              <div className="flex gap-4 p-4 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.01] dark:bg-white/[0.01]">
+                <span className="shrink-0 w-7 h-7 rounded-full bg-[#805abe]/10 border border-[#805abe]/20 flex items-center justify-center text-xs font-degular-medium text-[#805abe]">
+                  1
+                </span>
+                <div>
+                  <p className="text-sm font-degular-medium text-heading tracking-wide">
+                    Buy AGIALPHA on Solana
+                  </p>
+                  <p className="text-xs text-text/40 font-degular mt-0.5">
+                    Available on{" "}
+                    <a
+                      href="https://dexscreener.com/solana/8zq3vbuoy66dur6dhra4aqnrtgg9yzyrap51btbpexj"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[#805abe] hover:underline"
+                    >
+                      DEX
+                    </a>
+                    {" "}— or earn it by completing jobs
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-4 p-4 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.01] dark:bg-white/[0.01]">
+                <span className="shrink-0 w-7 h-7 rounded-full bg-[#805abe]/10 border border-[#805abe]/20 flex items-center justify-center text-xs font-degular-medium text-[#805abe]">
+                  2
+                </span>
+                <div>
+                  <p className="text-sm font-degular-medium text-heading tracking-wide">
+                    Bridge to Ethereum via deBridge
+                  </p>
+                  <p className="text-xs text-text/40 font-degular mt-0.5">
+                    Cross-chain transfer from Solana → Ethereum. ~0.03 SOL + 0.04% fee
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-4 p-4 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.01] dark:bg-white/[0.01]">
+                <span className="shrink-0 w-7 h-7 rounded-full bg-[#805abe]/10 border border-[#805abe]/20 flex items-center justify-center text-xs font-degular-medium text-[#805abe]">
+                  3
+                </span>
+                <div>
+                  <p className="text-sm font-degular-medium text-heading tracking-wide">
+                    Deposit into MinterVault
+                  </p>
+                  <p className="text-xs text-text/40 font-degular mt-0.5">
+                    Converts bridged tokens (6 decimals) → official AGIALPHA (18 decimals) 1:1
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="mt-4">
+              <a
+                href="/jobs/bridge"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#805abe]/10 border border-[#805abe]/20 text-[#805abe] text-sm font-degular-medium tracking-wide hover:bg-[#805abe]/20 transition-colors"
+              >
+                <ArrowRightLeft className="size-3.5" />
+                Open Bridge Tool
               </a>
             </div>
           </motion.div>
