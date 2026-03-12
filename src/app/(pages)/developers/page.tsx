@@ -1,7 +1,8 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { SplitString } from "@/app/utils/SplitString";
+import { useEnsCounts } from "@/app/hooks/useEnsCounts";
 import Footer from "@/app/sections/Footer";
 import {
   Copy,
@@ -391,48 +392,7 @@ export default function DevelopersPage() {
   const [toolInputs, setToolInputs] = useState<
     Record<string, Record<string, string>>
   >({});
-  const [validatorCount, setValidatorCount] = useState<number | null>(null);
-  const [agentCount, setAgentCount] = useState<number | null>(null);
-
-  useEffect(() => {
-    async function fetchEnsCounts() {
-      try {
-        const res = await fetch(
-          "https://api.thegraph.com/subgraphs/name/ensdomains/ens",
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              query: `{
-                validators: wrappedDomains(where: {name_ends_with: ".club.agi.eth"}, first: 1000) {
-                  owner { id }
-                }
-                agents: wrappedDomains(where: {name_ends_with: ".agent.agi.eth"}, first: 1000) {
-                  owner { id }
-                }
-              }`,
-            }),
-          }
-        );
-        const json = await res.json();
-        if (json?.data?.validators) {
-          const unique = new Set(
-            json.data.validators.map((d: { owner: { id: string } }) => d.owner.id)
-          );
-          setValidatorCount(unique.size);
-        }
-        if (json?.data?.agents) {
-          const unique = new Set(
-            json.data.agents.map((d: { owner: { id: string } }) => d.owner.id)
-          );
-          setAgentCount(unique.size);
-        }
-      } catch {
-        // fail silently
-      }
-    }
-    fetchEnsCounts();
-  }, []);
+  const { validators: validatorCount, agents: agentCount } = useEnsCounts();
 
   const charVariants = {
     hidden: { opacity: 0 },

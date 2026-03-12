@@ -5,12 +5,13 @@ import {
   Briefcase, Search, Shield, RefreshCw, X, ExternalLink,
   CheckCircle2, Clock, AlertTriangle, XCircle, Eye,
   ChevronDown, ChevronUp, Wallet, Globe, FileCheck, AtSign, ArrowRightLeft,
-  Loader2, Send, Ban, Timer, Gavel, ThumbsUp, ThumbsDown, Flag,
+  Loader2, Send, Ban, Timer, Gavel, ThumbsUp, ThumbsDown, Flag, Users, Bot,
 } from 'lucide-react';
 import { useAccount, useConnect, useSignMessage, useEnsName, usePublicClient, useReadContract, useReadContracts, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { formatUnits, keccak256, toBytes } from 'viem';
 import { mainnet } from 'wagmi/chains';
 import Footer from '@/app/sections/Footer';
+import { useEnsCounts } from '@/app/hooks/useEnsCounts';
 import Link from 'next/link';
 import { WalletButton } from './components/WalletButton';
 import { CONTRACTS, DEPLOYMENT_BLOCK, agiJobManagerAbi, erc20Abi, ENS_SUBDOMAINS } from './lib/contracts';
@@ -274,6 +275,8 @@ export default function JobsDApp() {
   const [validatorsLoading, setValidatorsLoading] = useState(false);
 
   // (Create Job form state moved to CreateJobBuilder component)
+
+  const { validators: validatorCount, agents: agentCount } = useEnsCounts();
 
   const { address, isConnected, chain } = useAccount();
   const { connect, connectors } = useConnect();
@@ -1210,7 +1213,7 @@ export default function JobsDApp() {
           className="mb-10"
         >
           <h2 className="text-xs uppercase tracking-widest text-text/40 font-degular-medium mb-3">Protocol Pulse</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
             {([
               { label: 'Open', count: kpi.Open, icon: Briefcase, iconClass: 'text-blue-400', hoverClass: 'hover:border-blue-400/20 hover:bg-blue-400/[0.03]' },
               { label: 'Assigned', count: kpi.Assigned, icon: Clock, iconClass: 'text-amber-400', hoverClass: 'hover:border-amber-400/20 hover:bg-amber-400/[0.03]' },
@@ -1218,6 +1221,8 @@ export default function JobsDApp() {
               { label: 'Disputed', count: kpi.Disputed, icon: AlertTriangle, iconClass: 'text-red-400', hoverClass: 'hover:border-red-400/20 hover:bg-red-400/[0.03]' },
               { label: 'Expired', count: kpi.Expired, icon: Timer, iconClass: 'text-zinc-400', hoverClass: 'hover:border-zinc-400/20 hover:bg-zinc-400/[0.03]' },
               { label: 'Completed', count: kpi.Completed, icon: CheckCircle2, iconClass: 'text-emerald-400', hoverClass: 'hover:border-emerald-400/20 hover:bg-emerald-400/[0.03]' },
+              { label: 'Validators', count: validatorCount ?? '...', icon: Users, iconClass: 'text-purple-400', hoverClass: 'hover:border-purple-400/20 hover:bg-purple-400/[0.03]' },
+              { label: 'Agents', count: agentCount ?? '...', icon: Bot, iconClass: 'text-[#805abe]', hoverClass: 'hover:border-[#805abe]/20 hover:bg-[#805abe]/[0.03]' },
             ] as const).map((tile) => (
               <div
                 key={tile.label}
