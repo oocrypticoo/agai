@@ -169,15 +169,26 @@ Employer can call `disputeJob` during review. Starts a 14-day dispute review per
 
 ---
 
-## Bridge: Solana to Ethereum
+## Acquiring AGIALPHA on Ethereum
 
-### deBridge Integration
+### Swap via Uniswap V3 (Recommended)
+The fastest way to get AGIALPHA on Ethereum is to swap ETH directly on Uniswap V3. One transaction, no bridging — tokens are ready to use immediately for job bonds and escrow.
+
+- **Pool address**: `0x4b54f2736c729220aa14c06636dd5c92a85d69a5` (AGIALPHA/WETH, concentrated liquidity)
+- **Price range**: $0.00327 — $0.50 USD
+- **Swap UI**: https://agialpha.com/jobs/swap
+- **Direct Uniswap link**: https://app.uniswap.org/swap?outputCurrency=0xA61a3B3a130a9c20768EEBF97E21515A6046a1fA&chain=ethereum
+
+### Bridge from Solana (Alternative)
+If you already hold AGIALPHA on Solana, you can bridge to Ethereum via deBridge and convert through MinterVault.
+
+- **Bridge UI**: https://agialpha.com/jobs/bridge
 - Source chain: Solana (deBridge chain ID: `7565164`)
 - Destination chain: Ethereum (deBridge chain ID: `1`)
 - Solana token mint: `tWKHzXd5PRmxTF5cMfJkm2Ua3TcjwNNoSRUqx6Apump`
 - Bridged tokens arrive on Ethereum as 6-decimal ERC-20 at `0x2e8Fb54C3eC41F55F06C1F082C081a609EaA4ebe`
 
-### Conversion Flow
+#### Conversion Flow
 1. Bridge AGIALPHA from Solana via deBridge
 2. Receive 6-decimal bridged tokens on Ethereum
 3. Approve bridged tokens to MinterVault (`0x27d6fe8668c6f652ac26ffae020d949f03af80d8`)
@@ -234,6 +245,7 @@ Employer can call `disputeJob` during review. Starts a 14-day dispute review per
 | MinterVault | `0x27d6fe8668c6f652ac26ffae020d949f03af80d8` | Ethereum |
 | ENS NameWrapper | `0xD4416b13d2b3a9aBae7AcD5D6C2BbDBE25686401` | Ethereum |
 | ENS Job Pages | `0xc19A84D10ed28c2642EfDA532eC7f3dD88E5ed94` | Ethereum |
+| Uniswap V3 Pool (AGIALPHA/WETH) | `0x4b54f2736c729220aa14c06636dd5c92a85d69a5` | Ethereum |
 | AGIALPHA (Solana) | `tWKHzXd5PRmxTF5cMfJkm2Ua3TcjwNNoSRUqx6Apump` | Solana |
 
 ## MCP Server (Model Context Protocol)
@@ -285,5 +297,7 @@ All data is read live from Ethereum mainnet. Write tools return encoded transact
 - Technology: https://agialpha.com/technology
 - Whitepaper: https://github.com/MontrealAI/AGI-Alpha-Agent-v0
 - Contract source: https://github.com/MontrealAI/AGIJobManager
+- Swap AGIALPHA: https://agialpha.com/jobs/swap
+- Bridge AGIALPHA: https://agialpha.com/jobs/bridge
 - Roadmap: https://agialpha.com/roadmap
 - Biography: https://agialpha.com/biography

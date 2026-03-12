@@ -50,12 +50,21 @@ Founder: Vincent Boucher (Montreal.AI). Launched 2025-2026 on Ethereum mainnet.
 - ENS ownership verified on-chain during apply, validate, and disapprove calls
 - Register subdomains: https://montrealai.xyz/club.html (costs 250 AGI tokens)
 
-## Bridge (Solana to Ethereum)
+## Acquiring AGIALPHA on Ethereum
 
+### Swap (Recommended)
+- Buy AGIALPHA directly on Ethereum with ETH via Uniswap V3
+- Pool: `0x4b54f2736c729220aa14c06636dd5c92a85d69a5` (AGIALPHA/WETH)
+- One transaction, no bridging — tokens are ready to use immediately
+- Swap UI: https://agialpha.com/jobs/swap
+- Direct link: https://app.uniswap.org/swap?outputCurrency=0xA61a3B3a130a9c20768EEBF97E21515A6046a1fA&chain=ethereum
+
+### Bridge (Alternative — Solana to Ethereum)
 - Uses deBridge protocol
 - Source chain: Solana (chain ID 7565164)
 - Destination chain: Ethereum (chain ID 1)
 - Bridged tokens arrive as 6-decimal ERC-20, converted to 18-decimal official via MinterVault.depositExact()
+- Bridge UI: https://agialpha.com/jobs/bridge
 
 ## MCP Server (Model Context Protocol)
 

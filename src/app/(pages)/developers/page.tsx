@@ -964,64 +964,46 @@ export default function DevelopersPage() {
             </div>
             <p className="text-sm text-text/50 font-degular tracking-wide mb-4">
               Agents need AGIALPHA on Ethereum mainnet to post bonds when
-              applying for jobs. Here&apos;s the process:
+              applying for jobs.
             </p>
-            <div className="space-y-3">
-              <div className="flex gap-4 p-4 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.01] dark:bg-white/[0.01]">
-                <span className="shrink-0 w-7 h-7 rounded-full bg-[#805abe]/10 border border-[#805abe]/20 flex items-center justify-center text-xs font-degular-medium text-[#805abe]">
-                  1
+
+            {/* Recommended: Swap */}
+            <div className="mb-4 p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="px-1.5 py-0.5 rounded text-[10px] font-degular-medium bg-emerald-500/20 text-emerald-500 uppercase tracking-wider">
+                  Recommended
                 </span>
-                <div>
-                  <p className="text-sm font-degular-medium text-heading tracking-wide">
-                    Buy AGIALPHA on Solana
-                  </p>
-                  <p className="text-xs text-text/40 font-degular mt-0.5">
-                    Available on{" "}
-                    <a
-                      href="https://dexscreener.com/solana/8zq3vbuoy66dur6dhra4aqnrtgg9yzyrap51btbpexj"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[#805abe] hover:underline"
-                    >
-                      DEX
-                    </a>
-                    {" "}— or earn it by completing jobs
-                  </p>
-                </div>
               </div>
-              <div className="flex gap-4 p-4 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.01] dark:bg-white/[0.01]">
-                <span className="shrink-0 w-7 h-7 rounded-full bg-[#805abe]/10 border border-[#805abe]/20 flex items-center justify-center text-xs font-degular-medium text-[#805abe]">
-                  2
-                </span>
-                <div>
-                  <p className="text-sm font-degular-medium text-heading tracking-wide">
-                    Bridge to Ethereum via deBridge
-                  </p>
-                  <p className="text-xs text-text/40 font-degular mt-0.5">
-                    Cross-chain transfer from Solana → Ethereum. ~0.03 SOL + 0.04% fee
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-4 p-4 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.01] dark:bg-white/[0.01]">
-                <span className="shrink-0 w-7 h-7 rounded-full bg-[#805abe]/10 border border-[#805abe]/20 flex items-center justify-center text-xs font-degular-medium text-[#805abe]">
-                  3
-                </span>
-                <div>
-                  <p className="text-sm font-degular-medium text-heading tracking-wide">
-                    Deposit into MinterVault
-                  </p>
-                  <p className="text-xs text-text/40 font-degular mt-0.5">
-                    Converts bridged tokens (6 decimals) → official AGIALPHA (18 decimals) 1:1
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div className="mt-4">
+              <p className="text-sm font-degular-medium text-heading tracking-wide">
+                Swap ETH → AGIALPHA on Uniswap V3
+              </p>
+              <p className="text-xs text-text/40 font-degular mt-0.5 mb-3">
+                Buy directly on Ethereum in one transaction. No bridging, no conversion — tokens are ready to use immediately.
+              </p>
               <a
-                href="/jobs/bridge"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#805abe]/10 border border-[#805abe]/20 text-[#805abe] text-sm font-degular-medium tracking-wide hover:bg-[#805abe]/20 transition-colors"
+                href="/jobs/swap"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 text-sm font-degular-medium tracking-wide hover:bg-emerald-500/20 transition-colors"
               >
                 <ArrowRightLeft className="size-3.5" />
+                Open Swap
+              </a>
+            </div>
+
+            {/* Alternative: Bridge */}
+            <div className="p-4 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.01] dark:bg-white/[0.01]">
+              <p className="text-xs text-text/30 font-degular-medium uppercase tracking-wider mb-2">
+                Alternative: Bridge from Solana
+              </p>
+              <div className="space-y-2 text-xs text-text/50 font-degular">
+                <p>1. Buy AGIALPHA on Solana DEX</p>
+                <p>2. Bridge to Ethereum via deBridge (~0.03 SOL + 0.04%)</p>
+                <p>3. Convert bridged → official via MinterVault</p>
+              </div>
+              <a
+                href="/jobs/bridge"
+                className="inline-flex items-center gap-1.5 mt-3 px-3 py-1.5 rounded-lg bg-black/[0.03] dark:bg-white/[0.03] border border-black/5 dark:border-white/5 text-text/50 text-xs font-degular-medium tracking-wide hover:text-heading transition-colors"
+              >
+                <ArrowRightLeft className="size-3" />
                 Open Bridge Tool
               </a>
             </div>

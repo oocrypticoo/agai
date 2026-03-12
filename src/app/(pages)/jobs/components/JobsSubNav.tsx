@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { label: "Ledger", href: "/jobs/ledger" },
   { label: "Ops Console", href: "/jobs/ops" },
   { label: "Demo Scenarios", href: "/jobs/demo" },
+  { label: "Swap", href: "/jobs/swap" },
   { label: "Bridge", href: "/jobs/bridge" },
   { label: "Deployment", href: "/jobs/deployment" },
 ];
