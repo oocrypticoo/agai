@@ -1,13 +1,11 @@
 "use client";
 import React, { useRef, useEffect, useState } from "react";
-import { useTheme } from "next-themes";
 import Link from "next/link";
 import { Copy, Check, ArrowRight } from "lucide-react";
 
 const MCP_CONFIG = `{"mcpServers":{"agi-alpha":{"url":"https://agialpha.com/api/mcp"}}}`;
 
 const HeroNew: React.FC = () => {
-  const { theme } = useTheme();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [copied, setCopied] = useState(false);
 
@@ -119,16 +117,13 @@ const HeroNew: React.FC = () => {
         <div className="w-full lg:w-[45%] relative flex justify-center items-center">
           <video
             ref={videoRef}
-            className="w-[90%] scale-130 pointer-events-none"
+            className="w-[90%] scale-130 pointer-events-none mix-blend-difference dark:mix-blend-screen"
             src="/hero.mp4"
             muted
             loop
             playsInline
             autoPlay
             preload="auto"
-            style={{
-              mixBlendMode: theme === "dark" ? "screen" : "difference",
-            }}
           />
         </div>
       </div>
