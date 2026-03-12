@@ -1,17 +1,27 @@
 "use client";
-import React from "react";
+import React, { useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import { SplitString } from "../utils/SplitString";
 import { useTheme } from "next-themes";
 
 const Hero: React.FC = () => {
   const { theme } = useTheme();
+  const videoRef = useRef<HTMLVideoElement>(null);
   const text1 = SplitString("AGI Ascension");
 
   const charVariants = {
     hidden: { opacity: 0 },
     reveal: { opacity: 1 },
   };
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    // Force muted attribute on the DOM element (React prop doesn't always work on mobile)
+    video.muted = true;
+    video.setAttribute("muted", "");
+    video.play().catch(() => {});
+  }, []);
 
   return (
     <section className="w-full min-h-screen px-[20px] pt-[150px] pb-[50px] bg-white dark:bg-transparent lg:pt-0 lg:pb-0 flex items-center overflow-hidden">
@@ -46,38 +56,19 @@ const Hero: React.FC = () => {
           </motion.div>
         </div>
         <div className="w-full lg:w-[50%] relative">
-          {theme === "light" && (
-            <video
-              className="lg:absolute lg:-top-80 scale-130 lg:scale-120 pointer-events-none"
-              muted
-              loop
-              playsInline
-              webkit-playsinline="true"
-              autoPlay
-              style={{
-                mixBlendMode: "difference",
-              }}
-            >
-              <source src={"/hero.mp4"} type="video/mp4" />
-              Your browser does not support the video tag.
-            </video>
-          )}
-          {theme !== "light" && (
-            <video
-              className="lg:absolute lg:-top-80 scale-130 lg:scale-120 pointer-events-none"
-              muted
-              loop
-              playsInline
-              webkit-playsinline="true"
-              autoPlay
-              style={{
-                mixBlendMode: "screen",
-              }}
-            >
-              <source src={"/hero.mp4"} type="video/mp4" />
-              Your browser does not support the video tag.
-            </video>
-          )}
+          <video
+            ref={videoRef}
+            className="lg:absolute lg:-top-80 scale-130 lg:scale-120 pointer-events-none"
+            muted
+            loop
+            playsInline
+            autoPlay
+            style={{
+              mixBlendMode: theme === "light" ? "difference" : "screen",
+            }}
+          >
+            <source src={"/hero.mp4"} type="video/mp4" />
+          </video>
         </div>
       </div>
     </section>
