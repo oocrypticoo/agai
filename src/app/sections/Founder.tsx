@@ -1,7 +1,6 @@
 "use client";
 import React from "react";
 import Image from "next/image";
-import { useTheme } from "next-themes";
 import { motion } from "framer-motion";
 import { SplitString } from "../utils/SplitString";
 import ButtonPrimary from "../components/ButtonPrimary";
@@ -12,8 +11,6 @@ import ButtonSecondary from "../components/ButtonSecondary";
 
 const Founder = () => {
   const router = useRouter();
-  const { theme } = useTheme();
-
   const text1 = SplitString("Founder and");
   const text2 = SplitString("Chief Scientist");
 
@@ -77,16 +74,11 @@ const Founder = () => {
             className="mt-3 w-full flex justify-center bg-transparent"
           >
               <Image
-                style={{
-                  boxShadow: theme === "dark" ? "0 4px 100px #4747477b" : "",
-                  borderRadius: 20,
-                }}
                 src={"/vincent-c.png"}
                 width={2000}
                 height={2000}
                 alt="vincent-interview"
-                className="scale-103"
-  
+                className="scale-103 rounded-[20px] dark:shadow-[0_4px_100px_#4747477b]"
               />
           </motion.div>
           <div className="w-full lg:pl-15">
@@ -176,7 +168,7 @@ const Founder = () => {
                     aria-label={social.label}
                   >
                     <social.icon
-                      className="w-4 h-4 stroke-heading-invert"
+                      className="w-4 h-4 stroke-heading-invert text-heading-invert"
                     />
                   </a>
                 ))}
