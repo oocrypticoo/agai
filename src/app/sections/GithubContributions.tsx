@@ -85,7 +85,7 @@ const GithubContributions: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res = await fetch(`/api/contributions?year=${year}`);
+        const res = await fetch(`/contributions-${year}.json`);
         const json = await res.json();
 
         const contributions: Record<string, number> = {};
