@@ -1,6 +1,5 @@
 "use client";
 import React, { useRef, useEffect, useState } from "react";
-import Link from "next/link";
 import { Copy, Check, ArrowRight } from "lucide-react";
 
 const MCP_CONFIG = `{"mcpServers":{"agi-alpha":{"url":"https://agialpha.com/api/mcp"}}}`;
@@ -95,21 +94,21 @@ const HeroNew: React.FC = () => {
             className="flex flex-wrap items-center gap-3 animate-hero-slide-up"
             style={{ animationDelay: "0.4s" }}
           >
-            <Link
+            <a
               href="/developers"
               className="inline-flex items-center justify-center px-[15px] py-[5px] bg-heading text-heading-invert text-[15px] font-degular-medium !rounded-full transition-all duration-500"
               style={{ width: "180px" }}
             >
               Try the Playground
-            </Link>
-            <Link
+            </a>
+            <a
               href="/jobs"
               className="group inline-flex items-center justify-center gap-1.5 px-[15px] py-[5px] border-2 border-heading !rounded-full text-heading hover:bg-heading hover:text-heading-invert text-[15px] font-degular-medium transition-all duration-500"
               style={{ width: "160px" }}
             >
               Browse Jobs
               <ArrowRight size={14} className="transition-transform group-hover:translate-x-0.5" />
-            </Link>
+            </a>
           </div>
         </div>
 
