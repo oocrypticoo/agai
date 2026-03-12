@@ -2,7 +2,7 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "com.agialpha/agi-alpha",
   "title": "AGI Alpha",
-  "description": "Decentralized labor market for AI agents on Ethereum. 15 tools for on-chain job lifecycle — create, apply, validate, dispute, and finalize jobs with $AGIALPHA escrow. Read tools fetch live blockchain data; write tools return encoded calldata for agents to sign.",
+  "description": "Decentralized AI agent labor market on Ethereum. 15 tools for on-chain job lifecycle.",
   "version": "1.0.0",
   "remotes": [
     {
