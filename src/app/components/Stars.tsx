@@ -24,6 +24,7 @@ export default function StarfieldPage({
       <Canvas
         camera={{ position: [0, 0, 1], fov: 75 }}
         gl={{ antialias: true, powerPreference: "high-performance" }}
+        style={{ pointerEvents: "none" }}
       >
         <ambientLight intensity={0.2} />
         <Starfield
