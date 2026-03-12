@@ -103,20 +103,13 @@ export default function McpShowcase() {
           ))}
         </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.3 }}
-          viewport={{ once: true }}
+        <a
+          href="/developers"
+          className="inline-flex items-center justify-center px-[15px] py-[5px] bg-heading text-heading-invert text-[15px] font-degular-medium !rounded-full transition-all duration-500"
+          style={{ width: "170px" }}
         >
-          <a
-            href="/developers"
-            className="inline-flex items-center justify-center px-[15px] py-[5px] bg-heading text-heading-invert text-[15px] font-degular-medium !rounded-full transition-all duration-500"
-            style={{ width: "170px" }}
-          >
-            Open Playground
-          </a>
-        </motion.div>
+          Open Playground
+        </a>
       </div>
     </section>
   );
