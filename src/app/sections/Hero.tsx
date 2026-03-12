@@ -17,10 +17,38 @@ const Hero: React.FC = () => {
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
-    // Force muted attribute on the DOM element (React prop doesn't always work on mobile)
+
+    // Force all attributes at the DOM level for iOS Safari
     video.muted = true;
     video.setAttribute("muted", "");
-    video.play().catch(() => {});
+    video.setAttribute("playsinline", "");
+    video.setAttribute("webkit-playsinline", "");
+    video.preload = "auto";
+
+    const tryPlay = () => {
+      video.play().catch(() => {});
+    };
+
+    // Try immediately, and also retry when video data is ready
+    tryPlay();
+    video.addEventListener("loadeddata", tryPlay);
+    video.addEventListener("canplay", tryPlay);
+
+    // Also retry on first user interaction as a last resort
+    const onInteraction = () => {
+      tryPlay();
+      document.removeEventListener("touchstart", onInteraction);
+      document.removeEventListener("click", onInteraction);
+    };
+    document.addEventListener("touchstart", onInteraction, { passive: true });
+    document.addEventListener("click", onInteraction);
+
+    return () => {
+      video.removeEventListener("loadeddata", tryPlay);
+      video.removeEventListener("canplay", tryPlay);
+      document.removeEventListener("touchstart", onInteraction);
+      document.removeEventListener("click", onInteraction);
+    };
   }, []);
 
   return (
@@ -56,19 +84,20 @@ const Hero: React.FC = () => {
           </motion.div>
         </div>
         <div className="w-full lg:w-[50%] relative">
+          {/* Inline src instead of <source> for better mobile autoplay compat */}
           <video
             ref={videoRef}
             className="lg:absolute lg:-top-80 scale-130 lg:scale-120 pointer-events-none"
+            src="/hero.mp4"
             muted
             loop
             playsInline
             autoPlay
+            preload="auto"
             style={{
               mixBlendMode: theme === "light" ? "difference" : "screen",
             }}
-          >
-            <source src={"/hero.mp4"} type="video/mp4" />
-          </video>
+          />
         </div>
       </div>
     </section>
