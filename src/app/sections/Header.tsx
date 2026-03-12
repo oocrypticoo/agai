@@ -9,6 +9,7 @@ import ButtonSecondary from "../components/ButtonSecondary";
 import { useRouter } from "nextjs-toploader/app";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useAgialphaPrice } from "../hooks/useAgialphaPrice";
 
 const Header: React.FC = () => {
   const router = useRouter();
@@ -18,6 +19,7 @@ const Header: React.FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { theme } = useTheme();
   const [showTransition, setShowTransition] = useState(false);
+  const { priceUsd, priceChange24h } = useAgialphaPrice();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -51,15 +53,15 @@ const Header: React.FC = () => {
         transition={{ duration: 0.7 }}
         className="fixed top-0 left-0 right-0 z-50 backdrop-blur-xl bg-white/90 dark:bg-black/70"
       >
-        <div className="max-w-7xl mx-auto">
-          <div className="px-[10px] lg:px-0 flex justify-between items-center h-16 sm:h-20">
-            {/* Logo */}
-            <div className="flex items-center gap-10">
-              <Link href={"/"}>
+        <div className="max-w-[1400px] mx-auto px-4">
+          <div className="flex justify-between items-center h-16 sm:h-20">
+            {/* Logo + Nav */}
+            <div className="flex items-center gap-6 lg:gap-8">
+              <Link href={"/"} className="shrink-0">
                 <img
                   src={theme === "light" ? "/AGIBlack.png" : "/AGIWhite.png"}
                   alt="AGAI Logo"
-                  className="h-8 sm:h-10 w-auto"
+                  className="h-9 sm:h-12 w-auto"
                 />
               </Link>
               <div className="w-[1.5px] h-[18px] bg-[#929292] dark:bg-[#858585] rounded-full hidden lg:block" />
@@ -68,7 +70,7 @@ const Header: React.FC = () => {
                   return (
                     <div
                       key={item.name}
-                      className="text-[16px] md:text-[17px] text-text font-degular leading-relaxed tracking-wide hover:text-[#805abe] dark:hover:text-[#805abe] transition-colors duration-300 cursor-pointer"
+                      className="text-[17px] text-text font-degular leading-relaxed tracking-wide hover:text-[#805abe] dark:hover:text-[#805abe] transition-colors duration-300 cursor-pointer whitespace-nowrap"
                       onClick={() => {
                         router.push(`${item.link}`);
                       }}
@@ -79,8 +81,42 @@ const Header: React.FC = () => {
                 })}
               </nav>
             </div>
-            {/* CTA Button - Desktop */}
-            <div className="hidden xl:flex justify-center items-center gap-3">
+            {/* Price + CTAs - Desktop */}
+            <div className="hidden xl:flex items-center gap-4">
+              {priceUsd !== null && (
+                <a
+                  href="https://dexscreener.com/ethereum/0x4b54f2736c729220aa14c06636dd5c92a85d69a5"
+                  target="_blank"
+                  className="flex items-center gap-2 px-3 py-1 rounded-full bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/15 transition-colors whitespace-nowrap"
+                >
+                  <span className="text-[13px] font-degular-medium text-text/60">
+                    Price:{" "}
+                    <span className="font-degular-semibold text-heading">
+                      ${priceUsd < 0.01 ? priceUsd.toFixed(5) : priceUsd.toFixed(4)}
+                    </span>
+                  </span>
+                  <span className="text-[11px] text-text/30">|</span>
+                  <span className="text-[13px] font-degular-medium text-text/60">
+                    MCap:{" "}
+                    <span className="font-degular-semibold text-heading">
+                      {(() => {
+                        const mcap = priceUsd * 1e9;
+                        if (mcap >= 1e6) return `$${(mcap / 1e6).toFixed(1)}M`;
+                        if (mcap >= 1e3) return `$${(mcap / 1e3).toFixed(0)}K`;
+                        return `$${mcap.toFixed(0)}`;
+                      })()}
+                    </span>
+                  </span>
+                  {priceChange24h !== null && (
+                    <>
+                      <span className="text-[11px] text-text/30">|</span>
+                      <span className={`text-[12px] font-degular-medium ${priceChange24h >= 0 ? "text-green-500" : "text-red-500"}`}>
+                        {priceChange24h >= 0 ? "+" : ""}{priceChange24h.toFixed(1)}%
+                      </span>
+                    </>
+                  )}
+                </a>
+              )}
               <ButtonSecondary
                 text="$AGIALPHA"
                 Icon={ArrowRight}

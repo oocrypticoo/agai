@@ -125,7 +125,7 @@ const WhyAGIMatters = () => {
                 transition={{ duration: 0.5, delay: 0.9 }}
               >
                 <a
-                  href="https://jup.ag/swap/SOL-tWKHzXd5PRmxTF5cMfJkm2Ua3TcjwNNoSRUqx6Apump"
+                  href="https://jup.ag/?sell=So11111111111111111111111111111111111111112&buy=tWKHzXd5PRmxTF5cMfJkm2Ua3TcjwNNoSRUqx6Apump"
                   target="_blank"
                   rel="noopener noreferrer"
                   style={{ width: "160px" }}
