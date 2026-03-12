@@ -1,3 +1,4 @@
+"use client";
 import React from "react";
 import { motion } from "framer-motion";
 import { SplitString } from "../utils/SplitString";
@@ -9,8 +10,6 @@ import { useTheme } from "next-themes";
 const Jobs: React.FC = () => {
   const { theme } = useTheme();
   const text1 = SplitString("AGI Alpha Jobs");
-  const text2 = SplitString("First Deployment Component");
-
   const charVariants = {
     hidden: { opacity: 0 },
     reveal: { opacity: 1 },
@@ -22,30 +21,13 @@ const Jobs: React.FC = () => {
         {/* Section Header */}
         <div className="w-full mb-16">
           <motion.h1
-            className="font-degular-medium text-[60px] leading-[55px] sm:text-[70px] sm:leading-[65px] text-heading tracking-wide"
+            className="mb-8 font-degular-medium text-[60px] leading-[55px] sm:text-[70px] sm:leading-[65px] text-heading tracking-wide"
             style={{ textShadow: "2px 2px 40px #f8e2fe7c" }}
             initial="hidden"
             whileInView="reveal"
             transition={{ staggerChildren: 0.04, delayChildren: 0.5 }}
           >
             {text1.map((char: string, key: number) => (
-              <motion.span
-                key={key}
-                transition={{ duration: 0.5 }}
-                variants={charVariants}
-              >
-                {char}
-              </motion.span>
-            ))}
-          </motion.h1>
-          <motion.h1
-            className="mb-8 font-degular-thin text-[40px] leading-[35px] sm:text-[50px] sm:leading-[45px] text-text/70 tracking-wide"
-            style={{ textShadow: "2px 2px 40px #f8e2fe7c" }}
-            initial="hidden"
-            whileInView="reveal"
-            transition={{ staggerChildren: 0.02, delayChildren: 0.8 }}
-          >
-            {text2.map((char: string, key: number) => (
               <motion.span
                 key={key}
                 transition={{ duration: 0.5 }}

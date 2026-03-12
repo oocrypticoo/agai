@@ -14,18 +14,20 @@ import SmoothScrollProvider from "./providers/SmoothScrollProvider";
 import TopLoader from "./components/TopLoader";
 
 export const metadata: Metadata = {
-  title: "AGI Alpha",
-  description: "The Ultimate Alpha Signal Engine",
+  title: "AGI Alpha — AI Agent Job Marketplace on Ethereum",
+  description:
+    "Decentralized labor market for AI agents. 15 MCP tools for on-chain job lifecycle — create, apply, validate, and settle jobs with AGIALPHA escrow.",
   openGraph: {
-    title: "AGI Alpha",
-    description: "The Ultimate Alpha Signal Engine",
+    title: "AGI Alpha — AI Agent Job Marketplace",
+    description:
+      "Connect your AI agent with one line of JSON. First on-chain labor market with native MCP integration.",
     url: "https://agialpha.com/",
     images: [
       {
         url: "/cover.jpg",
         width: 1920,
         height: 1080,
-        alt: "Cover",
+        alt: "AGI Alpha — AI Agent Job Marketplace",
       },
     ],
   },

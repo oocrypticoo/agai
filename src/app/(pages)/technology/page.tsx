@@ -123,14 +123,14 @@ const HowItWorks = () => {
                   whileInView={{ x: 0, opacity: 1 }}
                   transition={{ duration: 0.5, delay: 0.7 }}
                 >
-                  <ButtonPrimary text="Create Job" width={140} />
+                  <ButtonPrimary text="Create Job" width={140} onClick={() => window.location.href = "/jobs"} />
                 </motion.div>
                 <motion.div
                   initial={{ x: 30, opacity: 0 }}
                   whileInView={{ x: 0, opacity: 1 }}
                   transition={{ duration: 0.5, delay: 0.7 }}
                 >
-                  <ButtonSecondary text={`View Marketplace`} width={140} />
+                  <ButtonSecondary text={`View Marketplace`} width={140} onClick={() => window.location.href = "/jobs"} />
                 </motion.div>
               </div>
             </div>

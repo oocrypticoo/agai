@@ -30,7 +30,6 @@ const Header: React.FC = () => {
 
   const navigationItems = [
     { name: "Home", link: "/" },
-    { name: "Technology", link: "/technology" },
     { name: "Whitepaper", link: "/whitepaper" },
     { name: "Roadmap", link: "/roadmap" },
     { name: "Biography", link: "/biography" },

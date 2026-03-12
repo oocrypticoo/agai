@@ -37,7 +37,6 @@ const Footer = () => {
 
   const development = [
     { name: "Roadmap", href: "/roadmap" },
-    { name: "Technology", href: "/technology" },
     { name: "Insight", href: "/insight" },
   ];
 

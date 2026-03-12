@@ -261,3 +261,20 @@
     opacity: 1;
   }
 }
+
+@keyframes heroSlideUp {
+  from {
+    transform: translateY(12px);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.animate-hero-fade-in {
+  animation: heroSlideUp 0.5s ease-out;
+}
+
+.animate-hero-slide-up {
+  animation: heroSlideUp 0.5s ease-out;
+}
