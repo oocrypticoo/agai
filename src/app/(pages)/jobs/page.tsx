@@ -1122,6 +1122,13 @@ export default function JobsDApp() {
               {termsAccepted ? 'Terms Accepted' : 'Review Terms'}
             </button>
             <Link
+              href="/jobs/swap"
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-black/10 dark:border-white/10 text-text hover:text-heading hover:border-[#805abe]/30 hover:bg-[#805abe]/5 text-sm font-degular-medium transition-all duration-300"
+            >
+              <ArrowRightLeft className="size-4" />
+              Swap
+            </Link>
+            <Link
               href="/jobs/bridge"
               className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-black/10 dark:border-white/10 text-text hover:text-heading hover:border-[#805abe]/30 hover:bg-[#805abe]/5 text-sm font-degular-medium transition-all duration-300"
             >
