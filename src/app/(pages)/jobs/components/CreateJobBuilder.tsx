@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import {
   X, Briefcase, Plus, Trash2, ChevronRight, ChevronLeft,
   Upload, Eye, CheckCircle2, Loader2, Copy, ExternalLink,
-  FileJson, Globe, Tag, ListChecks, FileText,
+  FileJson, Globe, Tag, ListChecks, FileText, Bot,
 } from 'lucide-react';
 import { parseUnits } from 'viem';
 import { useAccount, useWriteContract, useReadContract, useWaitForTransactionReceipt } from 'wagmi';
@@ -98,6 +98,10 @@ export default function CreateJobBuilder({ open, onClose }: Props) {
   // Metadata preview toggle
   const [showMetaPreview, setShowMetaPreview] = useState(false);
 
+  // Autonomous Agent Packet
+  const [showPacket, setShowPacket] = useState(false);
+  const [activePacketTab, setActivePacketTab] = useState<'agent' | 'validator' | 'employer' | 'executor'>('agent');
+
   // Step 3: Pinning + submission
   const [pinataJwt, setPinataJwt] = useState(() => {
     if (typeof window !== 'undefined') return localStorage.getItem(PINATA_JWT_KEY) ?? '';
@@ -150,6 +154,64 @@ export default function CreateJobBuilder({ open, onClose }: Props) {
   }), [spec, payout, duration, address]);
 
   const metadataJSON = useMemo(() => JSON.stringify(metadata, null, 2), [metadata]);
+
+  const jobPacketBase = useMemo(() => ({
+    name: spec.title ? `AGI Job · ${spec.title}` : 'AGI Job · Untitled',
+    description: spec.summary || '',
+    payoutAGIALPHA: payout ? Number(payout) : null,
+    durationSeconds: duration ? Number(duration) : null,
+    category: spec.category || '',
+    tags: spec.tags.filter(Boolean),
+    deliverables: spec.deliverables.filter(Boolean),
+    acceptanceCriteria: spec.acceptanceCriteria.filter(Boolean),
+    requirements: spec.requirements.filter(Boolean),
+    specURI: pinnedURI || '',
+    predictedEnsName: '—',
+    predictedEnsURI: '—',
+  }), [spec, payout, duration, pinnedURI]);
+
+  const packetData = useMemo(() => ({
+    agent: {
+      protocol: 'AGIJobManager', version: 'v25', source: 'draft',
+      job: jobPacketBase,
+      role: 'agent',
+      packet: {
+        objective: 'Evaluate fit, bond exposure, and completion deliverables before applying.',
+        nextAction: 'applyForJob(jobId, subdomain, proof[])',
+        checklist: ['Verify agent ENS.', 'Check bond estimate.', 'Read deliverables and acceptance criteria.'],
+      },
+    },
+    validator: {
+      protocol: 'AGIJobManager', version: 'v25', source: 'draft',
+      job: jobPacketBase,
+      role: 'validator',
+      packet: {
+        objective: 'Review completion material independently and vote only on evidence.',
+        nextAction: 'validateJob / disapproveJob',
+        checklist: ['Verify club ENS.', 'Read completion URI when available.', 'Check current thresholds and slash exposure.'],
+      },
+    },
+    employer: {
+      protocol: 'AGIJobManager', version: 'v25', source: 'draft',
+      job: jobPacketBase,
+      role: 'employer',
+      packet: {
+        objective: 'Publish a precise, machine-readable job and escrow the payout.',
+        nextAction: 'createJob(jobSpecURI, payout, duration, details)',
+        checklist: ['Confirm payout and duration.', 'Confirm Job Spec URI resolves.', 'Confirm details summary is sufficient for on-chain display.'],
+      },
+    },
+    executor: {
+      protocol: 'AGIJobManager', version: 'v25', source: 'draft',
+      job: jobPacketBase,
+      role: 'employer',
+      packet: {
+        objective: 'Publish a precise, machine-readable job and escrow the payout.',
+        nextAction: 'createJob(jobSpecURI, payout, duration, details)',
+        checklist: ['Confirm payout and duration.', 'Confirm Job Spec URI resolves.', 'Confirm details summary is sufficient for on-chain display.'],
+      },
+    },
+  }), [jobPacketBase]);
 
   const needsApproval = useMemo(() => {
     if (!payout || !tokenAllowance) return true;
@@ -340,6 +402,52 @@ export default function CreateJobBuilder({ open, onClose }: Props) {
               <pre className="w-full max-h-48 overflow-auto px-4 py-3 rounded-xl border border-black/10 dark:border-white/10 bg-black/[0.03] dark:bg-white/[0.02] text-xs font-mono text-text/70 leading-relaxed">
                 {metadataJSON}
               </pre>
+            )}
+          </div>
+
+          {/* Autonomous Agent Packet */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label
+                onClick={() => setShowPacket(v => !v)}
+                className="text-[10px] text-text/40 uppercase tracking-wider font-degular-medium flex items-center gap-1.5 cursor-pointer hover:text-text/60 transition-colors select-none"
+              >
+                <div className={`size-3.5 rounded border transition-colors flex items-center justify-center ${showPacket ? 'bg-[#805abe] border-[#805abe]' : 'border-white/20 bg-transparent'}`}>
+                  {showPacket && <CheckCircle2 className="size-2.5 text-white" />}
+                </div>
+                <Bot className="size-3" /> Autonomous Agent Packet
+              </label>
+              {showPacket && (
+                <button
+                  onClick={() => copyToClipboard(JSON.stringify(packetData[activePacketTab], null, 2))}
+                  className="flex items-center gap-1 text-[10px] text-text/40 hover:text-[#805abe] font-degular-medium transition-colors"
+                >
+                  <Copy className="size-3" /> Copy
+                </button>
+              )}
+            </div>
+            {showPacket && (
+              <div className="rounded-xl border border-black/10 dark:border-white/10 overflow-hidden">
+                {/* Tabs */}
+                <div className="flex border-b border-black/10 dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.01]">
+                  {(['agent', 'validator', 'employer', 'executor'] as const).map((tab) => (
+                    <button
+                      key={tab}
+                      onClick={() => setActivePacketTab(tab)}
+                      className={`px-3 py-2 text-[11px] font-degular-medium capitalize transition-colors ${
+                        activePacketTab === tab
+                          ? 'text-[#805abe] border-b-2 border-[#805abe] bg-[#805abe]/5'
+                          : 'text-text/40 hover:text-text/60'
+                      }`}
+                    >
+                      {tab}
+                    </button>
+                  ))}
+                </div>
+                <pre className="w-full max-h-56 overflow-auto px-4 py-3 text-xs font-mono text-text/70 leading-relaxed bg-black/[0.03] dark:bg-white/[0.02]">
+                  {JSON.stringify(packetData[activePacketTab], null, 2)}
+                </pre>
+              </div>
             )}
           </div>
 

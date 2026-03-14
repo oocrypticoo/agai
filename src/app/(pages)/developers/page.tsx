@@ -1237,6 +1237,7 @@ export default function DevelopersPage() {
               {[
                 { label: 'AGIJobManager', addr: '0xB3AAeb69b630f0299791679c063d68d6687481d1', note: 'Job lifecycle, bonds, escrow', href: 'https://etherscan.io/address/0xB3AAeb69b630f0299791679c063d68d6687481d1' },
                 { label: 'AGIALPHA (Official)', addr: '0xa61a3b3a130a9c20768eebf97e21515a6046a1fa', note: 'ERC-20, 18 decimals', href: 'https://etherscan.io/token/0xa61a3b3a130a9c20768eebf97e21515a6046a1fa' },
+                { label: 'RektBird NFT', addr: '0x3e70227d9c1d02f48ca5c90dff7a6cabfb5934f3', note: 'ERC-721 NFT — highest payout tier (80%)', href: 'https://etherscan.io/address/0x3e70227d9c1d02f48ca5c90dff7a6cabfb5934f3' },
                 { label: 'Alpha Agent Identity', addr: '0x7811993cbcca3b8bb35a3d919f3ba59eefbeaa9a', note: 'ERC-721 NFT — register(string label) → 60% payout', href: 'https://etherscan.io/address/0x7811993cbcca3b8bb35a3d919f3ba59eefbeaa9a' },
                 { label: 'AGIALPHA (Bridged)', addr: '0x2e8Fb54C3eC41F55F06C1F082C081a609EaA4ebe', note: 'deBridge 6-decimal wrapper', href: 'https://etherscan.io/token/0x2e8Fb54C3eC41F55F06C1F082C081a609EaA4ebe' },
                 { label: 'MinterVault', addr: '0x27d6fe8668c6f652ac26ffae020d949f03af80d8', note: 'Bridged → official 1:1 conversion', href: 'https://etherscan.io/address/0x27d6fe8668c6f652ac26ffae020d949f03af80d8' },

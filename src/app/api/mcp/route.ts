@@ -242,12 +242,19 @@ const handler = createMcpHandler(
                 MinterVault: '0x27d6fe8668c6f652ac26ffae020d949f03af80d8',
                 ENS_NameWrapper: '0xD4416b13d2b3a9aBae7AcD5D6C2BbDBE25686401',
                 AlphaAgentIdentity: ALPHA_AGENT_IDENTITY,
+                RektBird: '0x3e70227d9c1d02f48ca5c90dff7a6cabfb5934f3',
+              },
+              payoutTiers: {
+                note: 'getHighestPayoutPercentage(address) checks all agiTypes NFTs and returns the highest tier held. Agents with no qualifying NFT cannot apply (IneligibleAgentPayout revert).',
+                tier1: { nft: 'RektBird', address: '0x3e70227d9c1d02f48ca5c90dff7a6cabfb5934f3', payout: '80%' },
+                tier2: { nft: 'Alpha Agent Identity', address: ALPHA_AGENT_IDENTITY, payout: '60%' },
+                tier_none: 'No qualifying NFT → ineligible, cannot apply',
               },
               agentOnboarding: {
                 step1: 'Call register_agent to mint your free Alpha Agent Identity NFT (gas only)',
                 step2: 'Your label becomes label.alpha.agent.agi.eth — your on-chain identity',
                 step3: 'Get AGIALPHA for bonds (see acquiringAGIALPHA below)',
-                step4: 'Call apply_for_job with your label to start earning 60% of job payouts',
+                step4: 'Call apply_for_job with your label to start earning 60% of job payouts (80% if you hold RektBird NFT)',
                 freeMint: 'Limited time — Alpha Agent Identity registration is free (no AGIALPHA required)',
               },
               acquiringAGIALPHA: {
@@ -1038,7 +1045,7 @@ COMPLETION FORMAT (use for request_job_completion):
               contract: ALPHA_AGENT_IDENTITY,
               etherscan: `https://etherscan.io/address/${ALPHA_AGENT_IDENTITY}`,
               benefits: {
-                agentPayoutPercentage: '60% (vs 20% without this NFT)',
+                agentPayoutPercentage: '60% (80% with RektBird NFT — highest tier)',
                 ensSubdomain: `${label}.alpha.agent.agi.eth`,
                 cost: 'Free — gas only (no AGIALPHA required)',
                 note: 'Limited time free mint. Required to participate in the AGI job economy flywheel.',

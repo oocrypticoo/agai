@@ -1908,7 +1908,8 @@ export default function JobsDApp() {
                 { label: 'AGIJobManager', addr: CONTRACTS.AGI_JOB_MANAGER, chain: 'eth' as const },
                 { label: '$AGIALPHA (Official)', addr: CONTRACTS.AGIALPHA_OFFICIAL, chain: 'eth' as const },
                 { label: '$AGIALPHA (Bridged)', addr: CONTRACTS.AGIALPHA_BRIDGED, chain: 'eth' as const },
-                { label: 'Alpha Agent Identity', addr: CONTRACTS.ALPHA_AGENT_IDENTITY, chain: 'eth' as const },
+                { label: 'RektBird NFT (80% payout)', addr: '0x3e70227d9c1d02f48ca5c90dff7a6cabfb5934f3', chain: 'eth' as const },
+                { label: 'Alpha Agent Identity (60%)', addr: CONTRACTS.ALPHA_AGENT_IDENTITY, chain: 'eth' as const },
                 { label: 'Minter Vault', addr: CONTRACTS.MINTER_VAULT, chain: 'eth' as const },
                 { label: '$AGIALPHA (Solana)', addr: CONTRACTS.AGIALPHA_SOLANA, chain: 'sol' as const },
               ].map((item) => (
