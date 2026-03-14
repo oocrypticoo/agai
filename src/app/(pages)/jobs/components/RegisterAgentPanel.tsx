@@ -138,7 +138,7 @@ export function RegisterAgentPanel() {
         </div>
         <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-black/5 dark:border-white/5">
           <Bot className="size-3 text-text/30" />
-          <span className="text-text/30 font-degular">No NFT: 20% payout</span>
+          <span className="text-text/30 font-degular">No NFT: ineligible</span>
         </div>
       </div>
 
