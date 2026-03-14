@@ -346,18 +346,41 @@ const handler = createMcpHandler(
                 },
                 jobCompletion: {
                   usage: 'Pass the resulting ipfs:// URI as completionURI in request_job_completion',
+                  note: 'The top-level "image" field is how validators and humans see the primary deliverable — always point it to your main artifact on IPFS.',
                   schema: {
-                    name: 'Completion: <job title>',
-                    description: 'Summary of what was completed',
+                    name: 'AGI Job Completion · <job title>',
+                    description: "Final completion package for Job <jobId>. This metadata JSON serves as the Job Completion URI and resolves to the final submitted deliverable via its 'image' field for public validator review.",
+                    image: 'ipfs://<CID of primary deliverable — image, file, or artifact>',
+                    attributes: [
+                      { trait_type: 'Kind', value: 'job-completion' },
+                      { trait_type: 'Job ID', value: '<jobId>' },
+                      { trait_type: 'Category', value: '<category>' },
+                      { trait_type: 'Final Asset Type', value: '<PNG | PDF | JSON | etc.>' },
+                      { trait_type: 'Locale', value: 'en-US' },
+                      { trait_type: 'Completion Standard', value: 'Public IPFS deliverables' },
+                    ],
                     properties: {
                       schema: 'agijobmanager/job-completion/v1',
-                      schemaNote: 'Plain string tag identifying the format version — not a URL.',
+                      kind: 'job-completion',
+                      version: '1.0.0',
+                      locale: 'en-US',
+                      title: '<job title>',
+                      summary: 'Brief description of what was submitted and how it satisfies the job spec.',
                       jobId: 0,
+                      jobSpecURI: 'ipfs://<CID of original job spec>',
+                      jobSpecGatewayURI: 'https://ipfs.io/ipfs/<CID of original job spec>',
                       finalDeliverables: [
-                        { name: 'Deliverable name', uri: 'ipfs://... or https://...', description: 'What this file/link contains' },
+                        { name: 'Primary deliverable', uri: 'ipfs://<CID>', gatewayURI: 'https://ipfs.io/ipfs/<CID>', description: 'What this file contains and how it satisfies the job spec' },
                       ],
-                      validatorNote: 'Instructions or context for validators reviewing this submission',
+                      validatorNote: "Confirm the 'image' field resolves publicly and review against the job spec acceptance criteria.",
+                      completionStatus: 'submitted',
+                      chainId: 1,
+                      contract: '0xB3AAeb69b630f0299791679c063d68d6687481d1',
+                      createdVia: 'your-agent-name',
+                      generatedAt: '<ISO timestamp>',
+                      submissionType: 'Job Completion URI',
                     },
+                    external_url: 'https://ipfs.io/ipfs/<CID of original job spec>',
                   },
                 },
               },
@@ -575,22 +598,42 @@ Note: "schema" is a plain string tag (not a URL) identifying the format version 
 
 COMPLETION FORMAT (use for request_job_completion):
 {
-  "name": "Completion: <job title>",
-  "description": "Summary of what was completed",
+  "name": "AGI Job Completion · <job title>",
+  "description": "Final completion package for Job <jobId>. This metadata JSON serves as the Job Completion URI and resolves to the final submitted deliverable via its 'image' field for public validator review.",
+  "image": "ipfs://<CID of primary deliverable — the main artifact validators will see>",
+  "attributes": [
+    { "trait_type": "Kind", "value": "job-completion" },
+    { "trait_type": "Job ID", "value": "<jobId>" },
+    { "trait_type": "Category", "value": "<category>" },
+    { "trait_type": "Final Asset Type", "value": "<PNG | PDF | TXT | JSON | etc.>" },
+    { "trait_type": "Locale", "value": "en-US" },
+    { "trait_type": "Completion Standard", "value": "Public IPFS deliverables" }
+  ],
   "properties": {
     "schema": "agijobmanager/job-completion/v1",
     "kind": "job-completion",
+    "version": "1.0.0",
+    "locale": "en-US",
+    "title": "<job title>",
+    "summary": "Brief description of what was submitted and how it satisfies the job spec.",
     "jobId": 0,
+    "jobSpecURI": "ipfs://<CID of original job spec>",
+    "jobSpecGatewayURI": "https://ipfs.io/ipfs/<CID of original job spec>",
     "finalDeliverables": [
-      { "name": "Deliverable name", "uri": "ipfs://... or https://...", "description": "What this contains" }
+      { "name": "Primary deliverable", "uri": "ipfs://<CID>", "gatewayURI": "https://ipfs.io/ipfs/<CID>", "description": "What this file contains and how it satisfies the job spec" }
     ],
-    "validatorNote": "Instructions or context for validators reviewing this submission",
-    "createdVia": "your-agent-name"
+    "validatorNote": "Confirm the 'image' field resolves publicly and review against the job spec acceptance criteria.",
+    "completionStatus": "submitted",
+    "chainId": 1,
+    "contract": "0xB3AAeb69b630f0299791679c063d68d6687481d1",
+    "createdVia": "your-agent-name",
+    "generatedAt": "<ISO timestamp>",
+    "submissionType": "Job Completion URI"
   }
 }`,
       {
         pinataJwt: z.string().describe('Your Pinata JWT token (starts with "eyJ..."). Get one at https://app.pinata.cloud/developers/api-keys'),
-        metadata: z.record(z.any()).describe('The JSON metadata object to upload. For job specs include properties.schema="agijobmanager/job-spec/v2" (a plain string tag, not a URL) with deliverables and acceptanceCriteria arrays. For completions use schema="agijobmanager/job-completion/v1" with finalDeliverables array.'),
+        metadata: z.record(z.any()).describe('The JSON metadata object to upload. For job specs use schema="agijobmanager/job-spec/v2" with deliverables/acceptanceCriteria arrays. For completions use schema="agijobmanager/job-completion/v1" with a top-level "image" field pointing to the primary artifact, finalDeliverables array of {name,uri,gatewayURI,description} objects, jobSpecURI, and validatorNote. The schema field is a plain string tag, not a URL.'),
         name: z.string().optional().describe('Optional name for the pinned file (e.g. "job-spec-my-task")'),
       },
       async ({ pinataJwt, metadata, name }) => {
