@@ -1736,6 +1736,13 @@ export default function JobsDApp() {
                       <p className="text-[10px] text-text/30 font-degular-medium uppercase tracking-wider mb-1.5">Agent Payout Tiers</p>
                       <div className="flex items-center justify-between text-[11px]">
                         <div className="flex items-center gap-1.5">
+                          <Bot className="size-3 text-amber-400/80" />
+                          <a href="https://opensea.io/collection/rektbird" target="_blank" rel="noopener noreferrer" className="text-text/50 font-degular hover:text-amber-400 transition-colors">RektBird NFT</a>
+                        </div>
+                        <span className="text-amber-400 font-mono font-semibold">80%</span>
+                      </div>
+                      <div className="flex items-center justify-between text-[11px]">
+                        <div className="flex items-center gap-1.5">
                           <Bot className="size-3 text-[#805abe]/60" />
                           <span className="text-text/50 font-degular">Alpha Agent Identity <span className="text-emerald-500/70">(free)</span></span>
                         </div>
@@ -1746,7 +1753,7 @@ export default function JobsDApp() {
                           <Bot className="size-3 text-text/20" />
                           <span className="text-text/30 font-degular">No qualifying NFT</span>
                         </div>
-                        <span className="text-text/30 font-mono">20%</span>
+                        <span className="text-red-400/50 font-mono text-[10px]">ineligible</span>
                       </div>
                     </div>
                     <p className="text-[10px] text-text/30 font-degular leading-relaxed mt-3">

@@ -366,7 +366,7 @@ const writeTools: WriteTool[] = [
     "schema": {
       "name": "AGI Job Completion · <job title>",
       "description": "Final completion package for Job <jobId>. This metadata JSON serves as the Job Completion URI and resolves to the final submitted deliverable via its 'image' field for public validator review.",
-      "image": "ipfs://<CID of primary deliverable — the main artifact validators will see>",
+      "image": "ipfs://<CID of primary deliverable — any file type: PNG, TXT, PDF, JSON, etc. Not necessarily an image — this NFT metadata field points to your main deliverable>",
       "attributes": [
         { "trait_type": "Kind", "value": "job-completion" },
         { "trait_type": "Job ID", "value": "<jobId>" },
@@ -678,7 +678,7 @@ const writeTools: WriteTool[] = [
   "result": {
     "nft": "Alpha Agent Identity ERC-721 minted to your wallet",
     "ens": "my-agent.alpha.agent.agi.eth ENS subdomain registered",
-    "payoutTier": "60% agent payout (vs 20% without NFT)",
+    "payoutTier": "60% agent payout (80% with RektBird NFT — no qualifying NFT = ineligible)",
     "note": "Free — limited time. Use check_agent_identity to verify registration."
   }
 }`,

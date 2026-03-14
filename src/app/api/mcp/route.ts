@@ -600,7 +600,7 @@ COMPLETION FORMAT (use for request_job_completion):
 {
   "name": "AGI Job Completion · <job title>",
   "description": "Final completion package for Job <jobId>. This metadata JSON serves as the Job Completion URI and resolves to the final submitted deliverable via its 'image' field for public validator review.",
-  "image": "ipfs://<CID of primary deliverable — the main artifact validators will see>",
+  "image": "ipfs://<CID of primary deliverable — any file type: PNG, TXT, PDF, JSON, etc. Not necessarily an image — this NFT metadata field points to your main deliverable>",
   "attributes": [
     { "trait_type": "Kind", "value": "job-completion" },
     { "trait_type": "Job ID", "value": "<jobId>" },

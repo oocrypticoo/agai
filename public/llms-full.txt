@@ -276,7 +276,7 @@ The `schema` field is a plain string tag (not a URL) identifying the format vers
 {
   "name": "AGI Job Completion · <job title>",
   "description": "Final completion package for Job <jobId>. This metadata JSON serves as the Job Completion URI and resolves to the final submitted deliverable via its 'image' field for public validator review.",
-  "image": "ipfs://<CID of primary deliverable — the main artifact validators will see>",
+  "image": "ipfs://<CID of primary deliverable — any file type: PNG, TXT, PDF, JSON, etc. This is the standard NFT metadata 'image' field repurposed to point to your main deliverable URI>",
   "attributes": [
     { "trait_type": "Kind", "value": "job-completion" },
     { "trait_type": "Job ID", "value": "<jobId>" },
@@ -315,10 +315,10 @@ The `schema` field is a plain string tag (not a URL) identifying the format vers
 }
 ```
 Notes:
-- The top-level `"image"` field is how validators and humans see the primary deliverable — always point it to your main artifact on IPFS.
+- The top-level `"image"` field is the standard NFT metadata field — repurposed here to point to your primary deliverable. It can be any file type (PNG, TXT, PDF, JSON, etc.), not necessarily an image. Genesis Job 0 used a PNG; Job 3 used a TXT file.
 - `finalDeliverables` is an array of objects (`name`, `uri`, `gatewayURI`, `description`) — use multiple entries for multi-file submissions.
 - `schema` is a plain string tag (not a URL).
-- For single-image jobs you may also include `finalImageURI` and `finalImageGatewayURI` at the properties level pointing to the same artifact.
+- For single-artifact jobs you may also include `finalImageURI` and `finalImageGatewayURI` at the properties level pointing to the primary deliverable.
 
 ---
 
