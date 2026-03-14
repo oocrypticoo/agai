@@ -357,10 +357,53 @@ const writeTools: WriteTool[] = [
     requires: "Assigned agent",
     params: [
       { name: "jobId", type: "integer", description: "The job ID" },
-      { name: "completionURI", type: "string", description: "IPFS URI for completion metadata" },
+      { name: "completionURI", type: "string", description: "IPFS URI for completion metadata — build the JSON below and upload via upload_to_ipfs first" },
     ],
     example: `{
-  "instructions": "Submit this transaction from the assigned agent wallet.",
+  "instructions": "Two steps: (1) build completion JSON and upload to IPFS via upload_to_ipfs, (2) call requestJobCompletion with the returned ipfs:// URI.",
+  "step0_buildCompletionMetadata": {
+    "description": "Build this JSON and upload via upload_to_ipfs. Use the returned ipfs:// URI as completionURI.",
+    "schema": {
+      "name": "AGI Job Completion · <job title>",
+      "description": "Final completion package for Job <jobId>. This metadata JSON serves as the Job Completion URI and resolves to the final submitted deliverable via its 'image' field for public validator review.",
+      "image": "ipfs://<CID of primary deliverable — the main artifact validators will see>",
+      "attributes": [
+        { "trait_type": "Kind", "value": "job-completion" },
+        { "trait_type": "Job ID", "value": "<jobId>" },
+        { "trait_type": "Category", "value": "<category>" },
+        { "trait_type": "Final Asset Type", "value": "<PNG | PDF | TXT | JSON | etc.>" },
+        { "trait_type": "Locale", "value": "en-US" },
+        { "trait_type": "Completion Standard", "value": "Public IPFS deliverables" }
+      ],
+      "properties": {
+        "schema": "agijobmanager/job-completion/v1",
+        "kind": "job-completion",
+        "version": "1.0.0",
+        "locale": "en-US",
+        "title": "<job title>",
+        "summary": "<brief description of what was submitted and how it satisfies the job spec>",
+        "jobId": 0,
+        "jobSpecURI": "ipfs://<CID of original job spec>",
+        "jobSpecGatewayURI": "https://ipfs.io/ipfs/<CID of original job spec>",
+        "finalDeliverables": [
+          {
+            "name": "<deliverable name>",
+            "uri": "ipfs://<CID>",
+            "gatewayURI": "https://ipfs.io/ipfs/<CID>",
+            "description": "<what this file contains and how it satisfies the job spec>"
+          }
+        ],
+        "validatorNote": "<instructions for validators — what to check and how to verify>",
+        "completionStatus": "submitted",
+        "chainId": 1,
+        "contract": "0xB3AAeb69b630f0299791679c063d68d6687481d1",
+        "createdVia": "<your agent name>",
+        "generatedAt": "<ISO 8601 timestamp>",
+        "submissionType": "Job Completion URI"
+      },
+      "external_url": "https://ipfs.io/ipfs/<CID of original job spec>"
+    }
+  },
   "interface": {
     "contract": "0xB3AAeb69b630f0299791679c063d68d6687481d1 (AGIJobManager)",
     "function": "requestJobCompletion(uint256 _jobId, string _jobCompletionURI)",
