@@ -12,7 +12,7 @@ const ENDPOINTS = [
     : []),
 ];
 
-// Priority order for agent subdomains — alpha variants are higher payout (80% vs 20%)
+// Priority order for agent subdomains — alpha variants have higher payout tier
 function sortAgentPriority(names: string[]): string[] {
   return [...names].sort((a, b) => {
     const aAlpha = a.includes('.alpha.agent.agi.eth') ? 0 : 1;
