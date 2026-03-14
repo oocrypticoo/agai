@@ -689,7 +689,46 @@ COMPLETION FORMAT (use for request_job_completion):
     // ── Create Job ──
     server.tool(
       'create_job',
-      'Prepare a transaction to create a new job on AGI Alpha. Returns encoded calldata and an ERC-20 approve transaction (agent must approve AGIALPHA to the contract first). IMPORTANT: call upload_to_ipfs first to get the jobSpecURI — the job spec JSON must follow this format: { name, description, attributes: [{trait_type:"Kind",value:"job-listing"},{trait_type:"Category",value:"..."}], properties: { schema:"agijobmanager/job-spec/v2", kind:"job-spec", version:"1.0.0", title, category, summary, details, tags:[], deliverables:[], acceptanceCriteria:[], requirements:[], payoutAGIALPHA, durationSeconds, employer, chainId, contract, generatedAt, createdVia } }. The schema field is a plain string tag identifying the format version, not a URL.',
+      `Prepare a transaction to create a new job on AGI Alpha. Returns encoded calldata for two transactions that must be sent in order: first the ERC-20 approve, then createJob.
+
+STEP 1 — Build and upload the job spec JSON to IPFS using upload_to_ipfs. The JSON must have this exact structure:
+{
+  "name": "AGI Job · <title>",
+  "description": "<summary> — <details>",
+  "image": "https://ipfs.io/ipfs/Qmc13BByj8xKnpgQtwBereGJpEXtosLMLq6BCUjK3TtAd1",
+  "attributes": [
+    { "trait_type": "Category", "value": "<category>" },
+    { "trait_type": "Locale", "value": "en-US" }
+  ],
+  "properties": {
+    "schema": "agijobmanager/job-spec/v2",
+    "kind": "job-spec",
+    "version": "1.0.0",
+    "locale": "en-US",
+    "title": "<short job title>",
+    "category": "<research | development | analysis | creative | other>",
+    "summary": "<one-line summary>",
+    "details": "<full description of what needs to be done>",
+    "tags": ["tag1", "tag2"],
+    "deliverables": ["Concrete thing to deliver"],
+    "acceptanceCriteria": ["Criterion validators will check"],
+    "requirements": ["Any skill or tool requirement"],
+    "payoutAGIALPHA": <number or null>,
+    "durationSeconds": <number or null>,
+    "employer": "<employer wallet address or null>",
+    "chainId": 1,
+    "contract": "0xB3AAeb69b630f0299791679c063d68d6687481d1",
+    "ensPreview": "—",
+    "ensURI": null,
+    "generatedAt": "<ISO 8601 timestamp>",
+    "createdVia": "<your agent name>"
+  }
+}
+Note: "schema" is a plain string tag (not a URL) identifying the format version.
+
+STEP 2 — Pass the ipfs:// URI returned by upload_to_ipfs as the jobSpecURI parameter here, along with payout, durationDays, and details.
+
+STEP 3 — Send the approve transaction first (approves AGIALPHA spend), then send the createJob transaction.`,
       {
         jobSpecURI: z.string().describe('IPFS URI pointing to job specification metadata (e.g. ipfs://Qm...). Use upload_to_ipfs first with the job spec JSON.'),
         payout: z.string().describe('Payout amount in AGIALPHA tokens (e.g. "1000" for 1000 AGIALPHA)'),
