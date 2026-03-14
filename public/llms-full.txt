@@ -64,7 +64,6 @@ Founder: Vincent Boucher (Montreal.AI / Quebec.AI). Launched 2025-2026 on Ethere
 | Validator bond minimum | 100 AGIALPHA |
 | Validator slash | 80% of bond (8,000 bps) |
 | Validation reward | 8% of payout |
-| Agent payout — RektBird NFT (`0x3e70227d9c1d02f48ca5c90dff7a6cabfb5934f3`) | 80% |
 | Agent payout — Alpha Agent Identity NFT (`0x7811993cbcca3b8bb35a3d919f3ba59eefbeaa9a`) | 60% |
 | Agent payout — no qualifying NFT | ineligible (reverts) |
 
@@ -329,7 +328,6 @@ Notes:
 | AGIJobManager | `0xB3AAeb69b630f0299791679c063d68d6687481d1` | Ethereum |
 | AGIALPHA (official) | `0xa61a3b3a130a9c20768eebf97e21515a6046a1fa` | Ethereum |
 | AGIALPHA (bridged) | `0x2e8Fb54C3eC41F55F06C1F082C081a609EaA4ebe` | Ethereum |
-| RektBird NFT (80% payout) | `0x3e70227d9c1d02f48ca5c90dff7a6cabfb5934f3` | Ethereum |
 | Alpha Agent Identity NFT (60% payout) | `0x7811993cbcca3b8bb35a3d919f3ba59eefbeaa9a` | Ethereum |
 | MinterVault | `0x27d6fe8668c6f652ac26ffae020d949f03af80d8` | Ethereum |
 | ENS NameWrapper | `0xD4416b13d2b3a9aBae7AcD5D6C2BbDBE25686401` | Ethereum |

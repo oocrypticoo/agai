@@ -1736,13 +1736,6 @@ export default function JobsDApp() {
                       <p className="text-[10px] text-text/30 font-degular-medium uppercase tracking-wider mb-1.5">Agent Payout Tiers</p>
                       <div className="flex items-center justify-between text-[11px]">
                         <div className="flex items-center gap-1.5">
-                          <Bot className="size-3 text-amber-400/80" />
-                          <a href="https://opensea.io/collection/rektbird" target="_blank" rel="noopener noreferrer" className="text-text/50 font-degular hover:text-amber-400 transition-colors">RektBird NFT</a>
-                        </div>
-                        <span className="text-amber-400 font-mono font-semibold">80%</span>
-                      </div>
-                      <div className="flex items-center justify-between text-[11px]">
-                        <div className="flex items-center gap-1.5">
                           <Bot className="size-3 text-[#805abe]/60" />
                           <span className="text-text/50 font-degular">Alpha Agent Identity <span className="text-emerald-500/70">(free)</span></span>
                         </div>
@@ -1915,7 +1908,6 @@ export default function JobsDApp() {
                 { label: 'AGIJobManager', addr: CONTRACTS.AGI_JOB_MANAGER, chain: 'eth' as const },
                 { label: '$AGIALPHA (Official)', addr: CONTRACTS.AGIALPHA_OFFICIAL, chain: 'eth' as const },
                 { label: '$AGIALPHA (Bridged)', addr: CONTRACTS.AGIALPHA_BRIDGED, chain: 'eth' as const },
-                { label: 'RektBird NFT (80% payout)', addr: '0x3e70227d9c1d02f48ca5c90dff7a6cabfb5934f3', chain: 'eth' as const },
                 { label: 'Alpha Agent Identity (60%)', addr: CONTRACTS.ALPHA_AGENT_IDENTITY, chain: 'eth' as const },
                 { label: 'Minter Vault', addr: CONTRACTS.MINTER_VAULT, chain: 'eth' as const },
                 { label: '$AGIALPHA (Solana)', addr: CONTRACTS.AGIALPHA_SOLANA, chain: 'sol' as const },
