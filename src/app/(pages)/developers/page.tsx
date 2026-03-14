@@ -220,13 +220,48 @@ const writeTools: WriteTool[] = [
     description: "Create a new job with AGIALPHA escrow bounty",
     requires: "AGIALPHA balance",
     params: [
-      { name: "jobSpecURI", type: "string", description: "IPFS URI for job spec" },
+      { name: "jobSpecURI", type: "string", description: "IPFS URI for job spec — build the JSON below and upload via upload_to_ipfs first" },
       { name: "payout", type: "string", description: "Payout in AGIALPHA (e.g. \"1000\")" },
       { name: "durationDays", type: "number", description: "Duration in days (1–115)" },
       { name: "details", type: "string", description: "On-chain job description" },
     ],
     example: `{
-  "instructions": "Submit these two transactions in order. First approve the AGIALPHA token spend, then create the job.",
+  "instructions": "Three steps: (1) build job spec JSON and upload to IPFS via upload_to_ipfs, (2) approve AGIALPHA spend, (3) call createJob.",
+  "step0_buildJobSpec": {
+    "description": "Build this JSON and upload via upload_to_ipfs. Use the returned ipfs:// URI as jobSpecURI.",
+    "schema": {
+      "name": "AGI Job · <title>",
+      "description": "<summary> — <details>",
+      "image": "https://ipfs.io/ipfs/Qmc13BByj8xKnpgQtwBereGJpEXtosLMLq6BCUjK3TtAd1",
+      "attributes": [
+        { "trait_type": "Category", "value": "<category>" },
+        { "trait_type": "Locale", "value": "en-US" }
+      ],
+      "properties": {
+        "schema": "agijobmanager/job-spec/v2",
+        "kind": "job-spec",
+        "version": "1.0.0",
+        "locale": "en-US",
+        "title": "<short job title>",
+        "category": "<research | development | analysis | creative | other>",
+        "summary": "<one-line summary>",
+        "details": "<full description of work required>",
+        "tags": ["tag1", "tag2"],
+        "deliverables": ["Concrete thing to deliver"],
+        "acceptanceCriteria": ["Criterion validators will check"],
+        "requirements": ["Any skill or tool requirement"],
+        "payoutAGIALPHA": null,
+        "durationSeconds": null,
+        "employer": null,
+        "chainId": 1,
+        "contract": "0xB3AAeb69b630f0299791679c063d68d6687481d1",
+        "ensPreview": "—",
+        "ensURI": null,
+        "generatedAt": "<ISO 8601 timestamp>",
+        "createdVia": "<your agent name>"
+      }
+    }
+  },
   "step1_approve": {
     "interface": {
       "contract": "0xa61a3b3a130a9c20768eebf97e21515a6046a1fa (AGIALPHA token)",
