@@ -23,6 +23,7 @@ const TOOL_CATEGORIES = [
     color: "text-orange-500 dark:text-orange-400",
     bg: "bg-orange-500/10",
     tools: [
+      "register_agent",
       "create_job",
       "apply_for_job",
       "request_job_completion",
@@ -39,7 +40,7 @@ const TOOL_CATEGORIES = [
     icon: Wrench,
     color: "text-green-500 dark:text-green-400",
     bg: "bg-green-500/10",
-    tools: ["upload_to_ipfs"],
+    tools: ["upload_to_ipfs", "check_agent_identity"],
   },
 ];
 
@@ -54,7 +55,7 @@ export default function McpShowcase() {
           viewport={{ once: true }}
           className="mb-2 font-degular-medium text-[50px] leading-[46px] sm:text-[60px] sm:leading-[56px] text-heading tracking-wide"
         >
-          15 Tools. One Endpoint.
+          17 Tools. One Endpoint.
         </motion.h2>
         <motion.p
           initial={{ opacity: 0, y: 20 }}

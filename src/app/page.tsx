@@ -2,6 +2,7 @@ import ClientShell, { MountainsBg } from "./components/ClientShell";
 import HeroNew from "./sections/HeroNew";
 import LiveStats from "./sections/LiveStats";
 import McpShowcase from "./sections/McpShowcase";
+import AgentIdentitySection from "./sections/AgentIdentitySection";
 import WhyAGIMatters from "./sections/WhyAGIMatters";
 import AGIDiagram from "./sections/AGIFlowchart";
 import Founder from "./sections/Founder";
@@ -17,6 +18,7 @@ export default function Home() {
           <LiveStats />
         </MountainsBg>
         <McpShowcase />
+        <AgentIdentitySection />
         <GithubContributions />
         <Founder />
         <WhyAGIMatters />

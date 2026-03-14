@@ -10,10 +10,10 @@ const ENS_ENDPOINTS = [
 
 const QUERY = `{
   validators: wrappedDomains(where: {name_ends_with: ".club.agi.eth"}, first: 1000) {
-    owner { id }
+    id
   }
   agents: wrappedDomains(where: {name_ends_with: ".agent.agi.eth"}, first: 1000) {
-    owner { id }
+    id
   }
 }`;
 
@@ -45,19 +45,9 @@ export function useEnsCounts(): EnsCounts {
 
         const json = await res.json();
         if (json?.data) {
-          const validatorOwners = new Set(
-            json.data.validators?.map(
-              (d: { owner: { id: string } }) => d.owner.id
-            ) ?? []
-          );
-          const agentOwners = new Set(
-            json.data.agents?.map(
-              (d: { owner: { id: string } }) => d.owner.id
-            ) ?? []
-          );
           setCounts({
-            validators: validatorOwners.size,
-            agents: agentOwners.size,
+            validators: json.data.validators?.length ?? 0,
+            agents: json.data.agents?.length ?? 0,
           });
           return; // success, stop trying endpoints
         }

@@ -6,6 +6,7 @@ export const CONTRACTS = {
   MINTER_VAULT: '0x27d6fe8668c6f652ac26ffae020d949f03af80d8' as `0x${string}`,
   ENS_JOB_PAGES: '0xc19A84D10ed28c2642EfDA532eC7f3dD88E5ed94' as `0x${string}`,
   ENS_NAME_WRAPPER: '0xD4416b13d2b3a9aBae7AcD5D6C2BbDBE25686401' as `0x${string}`,
+  ALPHA_AGENT_IDENTITY: '0x7811993cbcca3b8bb35a3d919f3ba59eefbeaa9a' as `0x${string}`,
   // ── Solana ──
   AGIALPHA_SOLANA: 'tWKHzXd5PRmxTF5cMfJkm2Ua3TcjwNNoSRUqx6Apump',
 } as const;
@@ -298,5 +299,23 @@ export const minterVaultAbi = [
     ],
     outputs: [{ name: 'minted', type: 'uint256' }],
     stateMutability: 'nonpayable',
+  },
+] as const;
+
+// ── Alpha Agent Identity ABI ──────────────────────────────────────────────
+export const alphaAgentIdentityAbi = [
+  {
+    type: 'function',
+    name: 'register',
+    inputs: [{ name: 'label', type: 'string' }],
+    outputs: [{ name: 'tokenId', type: 'uint256' }],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'balanceOf',
+    inputs: [{ name: 'owner', type: 'address' }],
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
   },
 ] as const;

@@ -1,15 +1,78 @@
 'use client';
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, ExternalLink, ArrowRightLeft } from 'lucide-react';
+import { ArrowLeft, ExternalLink, ArrowRightLeft, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import Footer from '@/app/sections/Footer';
 
 const AGIALPHA = '0xA61a3B3a130a9c20768EEBF97E21515A6046a1fA';
 const POOL = '0x4b54f2736c729220aa14c06636dd5c92a85d69a5';
-
-// Uniswap app URL pre-filled to swap ETH → AGIALPHA
 const UNISWAP_SWAP_URL = `https://app.uniswap.org/swap?outputCurrency=${AGIALPHA}&chain=ethereum`;
+
+// Intercept window.ethereum.request and strip explicit gasPrice / EIP-1559 fee fields
+// so MetaMask falls back to its own Market estimate instead of "Site suggested".
+function useMarketGas() {
+  useEffect(() => {
+    const eth = (window as unknown as { ethereum?: { request: (a: unknown) => Promise<unknown> } }).ethereum;
+    if (!eth) return;
+
+    const original = eth.request.bind(eth);
+
+    eth.request = async (args: unknown) => {
+      const a = args as { method: string; params?: Array<Record<string, unknown>> };
+      if (a.method === 'eth_sendTransaction' && Array.isArray(a.params) && a.params[0]) {
+        const tx = { ...a.params[0] };
+        // Strip site-suggested gas so MetaMask uses Market
+        delete tx.gasPrice;
+        delete tx.maxFeePerGas;
+        delete tx.maxPriorityFeePerGas;
+        return original({ ...a, params: [tx] });
+      }
+      return original(args);
+    };
+
+    return () => {
+      eth.request = original;
+    };
+  }, []);
+}
+
+function UniswapWidget() {
+  useMarketGas();
+
+  const src = `${UNISWAP_SWAP_URL}&theme=dark`;
+
+  return (
+    <div className="rounded-2xl border border-[#805abe]/20 bg-[#805abe]/5 overflow-hidden">
+      {/* Toolbar */}
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-[#805abe]/15">
+        <div className="flex items-center gap-2">
+          <ArrowRightLeft className="size-4 text-[#805abe]" />
+          <span className="text-sm font-degular-medium text-heading">Swap ETH → AGIALPHA</span>
+        </div>
+        <a
+          href={UNISWAP_SWAP_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-degular-medium text-[#805abe] border border-[#805abe]/20 hover:bg-[#805abe]/10 transition-colors"
+        >
+          <ExternalLink className="size-3" />
+          Open in new tab
+        </a>
+      </div>
+
+      {/* Iframe — no sandbox so MetaMask can inject */}
+      <iframe
+        src={src}
+        height="660"
+        width="100%"
+        style={{ border: 'none', display: 'block' }}
+        title="Uniswap swap widget"
+        allow="clipboard-write; web-share"
+      />
+    </div>
+  );
+}
 
 export default function SwapPage() {
   return (
@@ -54,43 +117,13 @@ export default function SwapPage() {
 
         <div className="max-w-2xl mx-auto space-y-6">
 
-          {/* Uniswap embed via iframe */}
+          {/* Uniswap widget embed */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.4 }}
-            className="rounded-2xl border border-black/5 dark:border-white/5 bg-white/[0.02] overflow-hidden"
+            transition={{ duration: 0.5, delay: 0.3 }}
           >
-            <iframe
-              src={`https://app.uniswap.org/swap?outputCurrency=${AGIALPHA}&chain=ethereum&theme=dark`}
-              width="100%"
-              height="660"
-              className="border-0"
-              title="Uniswap Swap"
-              allow="clipboard-write"
-            />
-          </motion.div>
-
-          {/* Fallback link */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.5 }}
-            className="text-center"
-          >
-            <a
-              href={UNISWAP_SWAP_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[#805abe] hover:bg-[#9370cb] text-white text-sm font-degular-medium transition-all duration-300"
-            >
-              <ArrowRightLeft className="size-4" />
-              Open in Uniswap
-              <ExternalLink className="size-3.5 opacity-60" />
-            </a>
-            <p className="mt-3 text-xs text-text/40 font-degular">
-              If the widget doesn&apos;t load, use the button above to swap directly on Uniswap.
-            </p>
+            <UniswapWidget />
           </motion.div>
 
           {/* Pool info */}

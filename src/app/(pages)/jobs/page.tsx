@@ -17,6 +17,7 @@ import { WalletButton } from './components/WalletButton';
 import { CONTRACTS, DEPLOYMENT_BLOCK, agiJobManagerAbi, erc20Abi, ENS_SUBDOMAINS } from './lib/contracts';
 import { TERMS_AND_CONDITIONS } from './lib/terms';
 import CreateJobBuilder from './components/CreateJobBuilder';
+import { RegisterAgentPanel } from './components/RegisterAgentPanel';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -255,6 +256,7 @@ export default function JobsDApp() {
   const [mounted, setMounted] = useState(false);
   const [showCreateJob, setShowCreateJob] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
+  const [showRegisterAgent, setShowRegisterAgent] = useState(false);
   const [selectedJob, setSelectedJob] = useState<ParsedJob | null>(null);
   const [jobSpec, setJobSpec] = useState<JobSpecMeta | null>(null);
   const [jobSpecLoading, setJobSpecLoading] = useState(false);
@@ -292,6 +294,8 @@ export default function JobsDApp() {
   // ENS subdomain checks — silent on wallet connect
   const [ensAgent, setEnsAgent] = useState<string | null>(null);
   const [ensClub, setEnsClub] = useState<string | null>(null);
+  const [ensAgents, setEnsAgents] = useState<string[]>([]);
+  const [ensClubs, setEnsClubs] = useState<string[]>([]);
   const [ensLoading, setEnsLoading] = useState(false);
 
   // Check terms on mount
@@ -310,19 +314,25 @@ export default function JobsDApp() {
     if (!address) {
       setEnsAgent(null);
       setEnsClub(null);
+      setEnsAgents([]);
+      setEnsClubs([]);
       setEnsLoading(false);
       return;
     }
     let cancelled = false;
     const cacheKey = `ens-subs:${address.toLowerCase()}`;
 
-    // 1. Instant load from cache
+    // 1. Instant load from cache — only use if we previously found something (don't cache misses)
     try {
       const cached = sessionStorage.getItem(cacheKey);
       if (cached) {
-        const { agent, club } = JSON.parse(cached);
-        setEnsAgent(agent);
-        setEnsClub(club);
+        const { agent, club, agents, clubs } = JSON.parse(cached);
+        if (agent || club) {
+          setEnsAgent(agent);
+          setEnsClub(club);
+          setEnsAgents(agents ?? (agent ? [agent] : []));
+          setEnsClubs(clubs ?? (club ? [club] : []));
+        }
       }
     } catch { /* ignore */ }
 
@@ -345,14 +355,20 @@ export default function JobsDApp() {
           const data = await res.json();
           const agentName = data.agent ?? null;
           const clubName = data.club ?? null;
+          const agentNames: string[] = data.agents ?? (agentName ? [agentName] : []);
+          const clubNames: string[] = data.clubs ?? (clubName ? [clubName] : []);
 
           setEnsAgent(agentName);
           setEnsClub(clubName);
+          setEnsAgents(agentNames);
+          setEnsClubs(clubNames);
 
-          // Cache for this session
-          try {
-            sessionStorage.setItem(cacheKey, JSON.stringify({ agent: agentName, club: clubName }));
-          } catch { /* storage full, ignore */ }
+          // Only cache when we found something — prevents stale null from blocking retries
+          if (agentName || clubName) {
+            try {
+              sessionStorage.setItem(cacheKey, JSON.stringify({ agent: agentName, club: clubName, agents: agentNames, clubs: clubNames }));
+            } catch { /* storage full, ignore */ }
+          }
         }
       } catch {
         // Network error — keep cached values if any
@@ -650,6 +666,14 @@ export default function JobsDApp() {
     functionName: 'allowance',
     args: address ? [address, CONTRACTS.AGI_JOB_MANAGER] : undefined,
     query: { enabled: !!address, refetchInterval: 15000 },
+  });
+
+  // Agent payout percentage — reads highest qualifying NFT type for the connected wallet
+  const { data: agentPayoutPctRaw } = useReadContract({
+    ...contractBase,
+    functionName: 'getHighestPayoutPercentage',
+    args: address ? [address] : undefined,
+    query: { enabled: !!address, refetchInterval: 30000 },
   });
 
   // (Write hooks for approve/createJob moved to CreateJobBuilder component)
@@ -1135,7 +1159,34 @@ export default function JobsDApp() {
               <ArrowRightLeft className="size-4" />
               Bridge
             </Link>
+            <button
+              onClick={() => setShowRegisterAgent(v => !v)}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl border text-sm font-degular-medium transition-all duration-300 ${
+                showRegisterAgent
+                  ? 'border-[#805abe]/40 text-[#805abe] bg-[#805abe]/10'
+                  : 'border-[#805abe]/20 text-[#805abe] hover:border-[#805abe]/40 hover:bg-[#805abe]/5'
+              }`}
+            >
+              <Bot className="size-4" />
+              Register Agent
+              <span className="px-1 py-0.5 rounded text-[9px] font-degular-medium bg-emerald-500/15 text-emerald-500 border border-emerald-500/20 uppercase tracking-wider">
+                Free
+              </span>
+            </button>
           </div>
+
+          {/* Register Agent Panel */}
+          {showRegisterAgent && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2 }}
+              className="mt-4"
+            >
+              <RegisterAgentPanel />
+            </motion.div>
+          )}
         </motion.div>
 
         {/* ═══ Readiness Bar ═══ */}
@@ -1178,8 +1229,8 @@ export default function JobsDApp() {
 
           {/* ENS subdomain indicators — auto-detected from subgraph */}
           {isConnected && ([
-            { label: 'Agent ENS', value: ensAgent },
-            { label: 'Club ENS', value: ensClub },
+            { label: 'Agent ENS', value: ensAgent, all: ensAgents },
+            { label: 'Club ENS', value: ensClub, all: ensClubs },
           ] as const).map((ens) => (
             <div
               key={ens.label}
@@ -1188,12 +1239,19 @@ export default function JobsDApp() {
                   ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
                   : 'border-black/10 dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.02] text-text/60'
               }`}
+              title={ens.all.length > 1 ? `All: ${ens.all.join(', ')} — using highest-payout: ${ens.value}` : undefined}
             >
               <AtSign className="size-3.5" />
               {ensLoading ? (
                 <span className="animate-pulse">Scanning...</span>
               ) : ens.value ? (
-                <><CheckCircle2 className="size-3.5 text-emerald-400" /><span>{ens.value}</span></>
+                <>
+                  <CheckCircle2 className="size-3.5 text-emerald-400" />
+                  <span>{ens.value}</span>
+                  {ens.all.length > 1 && (
+                    <span className="px-1 rounded bg-emerald-500/20 text-[9px] font-mono">+{ens.all.length - 1}</span>
+                  )}
+                </>
               ) : (
                 <><XCircle className="size-3.5 opacity-30" /><span>No {ens.label.toLowerCase()}</span></>
               )}
@@ -1585,7 +1643,11 @@ export default function JobsDApp() {
               <h3 className="text-sm font-degular-semibold text-heading mb-4">Payout Composition</h3>
               {(() => {
                 const validatorPct = pp?.validationRewardPct !== undefined ? Number(pp.validationRewardPct) : 8;
-                const agentPct = 0; // Default when no qualifying NFT held
+                // Live agent payout pct from contract (highest qualifying NFT held by wallet)
+                // Falls back to 60 (Alpha Agent Identity free tier) when not connected
+                const agentPct = agentPayoutPctRaw !== undefined
+                  ? Number(agentPayoutPctRaw as bigint)
+                  : isConnected ? 0 : 60;
                 const retainedPct = 100 - agentPct - validatorPct;
                 return (
                   <>
@@ -1669,8 +1731,30 @@ export default function JobsDApp() {
                       })()}
                     </div>
 
-                    <p className="text-[11px] text-text/40 font-degular leading-relaxed mt-4">
-                      The exact agent payout is snapshotted at assignment time from the highest eligible AGI type held by the applying agent.
+                    {/* NFT tier info */}
+                    <div className="border-t border-black/5 dark:border-white/5 pt-3 mt-3 space-y-1.5">
+                      <p className="text-[10px] text-text/30 font-degular-medium uppercase tracking-wider mb-1.5">Agent Payout Tiers</p>
+                      <div className="flex items-center justify-between text-[11px]">
+                        <div className="flex items-center gap-1.5">
+                          <Bot className="size-3 text-[#805abe]/60" />
+                          <span className="text-text/50 font-degular">Alpha Agent Identity <span className="text-emerald-500/70">(free)</span></span>
+                        </div>
+                        <span className="text-heading font-mono">60%</span>
+                      </div>
+                      <div className="flex items-center justify-between text-[11px]">
+                        <div className="flex items-center gap-1.5">
+                          <Bot className="size-3 text-text/20" />
+                          <span className="text-text/30 font-degular">No qualifying NFT</span>
+                        </div>
+                        <span className="text-text/30 font-mono">20%</span>
+                      </div>
+                    </div>
+                    <p className="text-[10px] text-text/30 font-degular leading-relaxed mt-3">
+                      {isConnected
+                        ? agentPayoutPctRaw !== undefined
+                          ? `Your wallet qualifies for ${Number(agentPayoutPctRaw as bigint)}% agent payout. Snapshotted at assignment time.`
+                          : 'Connect to see your qualifying payout tier.'
+                        : 'Payout % is snapshotted at assignment time from the highest eligible NFT type held.'}
                     </p>
                   </>
                 );
@@ -1724,7 +1808,7 @@ export default function JobsDApp() {
               <div className="rounded-2xl border border-black/5 dark:border-white/5 bg-white/[0.02] p-5">
                 <span className="text-xs text-text/40 uppercase tracking-wider font-degular-medium">$AGIALPHA (Official)</span>
                 <p className="text-2xl font-degular-bold text-heading mt-1 tabular-nums">
-                  {tokenBalance !== undefined ? formatUnits(tokenBalance as bigint, 18) : '—'}
+                  {tokenBalance !== undefined ? Number(formatUnits(tokenBalance as bigint, 18)).toLocaleString(undefined, { maximumFractionDigits: 4 }) : '—'}
                 </p>
               </div>
               <div className="rounded-2xl border border-black/5 dark:border-white/5 bg-white/[0.02] p-5">
@@ -1736,7 +1820,7 @@ export default function JobsDApp() {
               <div className="rounded-2xl border border-black/5 dark:border-white/5 bg-white/[0.02] p-5">
                 <span className="text-xs text-text/40 uppercase tracking-wider font-degular-medium">Contract Allowance</span>
                 <p className="text-2xl font-degular-bold text-heading mt-1 tabular-nums">
-                  {tokenAllowance !== undefined ? ((tokenAllowance as bigint) >= BigInt('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff') ? '∞' : formatUnits(tokenAllowance as bigint, 18)) : '—'}
+                  {tokenAllowance !== undefined ? ((tokenAllowance as bigint) >= BigInt('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff') ? '∞' : Number(formatUnits(tokenAllowance as bigint, 18)).toLocaleString(undefined, { maximumFractionDigits: 4 })) : '—'}
                 </p>
               </div>
             </div>
@@ -1824,6 +1908,7 @@ export default function JobsDApp() {
                 { label: 'AGIJobManager', addr: CONTRACTS.AGI_JOB_MANAGER, chain: 'eth' as const },
                 { label: '$AGIALPHA (Official)', addr: CONTRACTS.AGIALPHA_OFFICIAL, chain: 'eth' as const },
                 { label: '$AGIALPHA (Bridged)', addr: CONTRACTS.AGIALPHA_BRIDGED, chain: 'eth' as const },
+                { label: 'Alpha Agent Identity', addr: CONTRACTS.ALPHA_AGENT_IDENTITY, chain: 'eth' as const },
                 { label: 'Minter Vault', addr: CONTRACTS.MINTER_VAULT, chain: 'eth' as const },
                 { label: '$AGIALPHA (Solana)', addr: CONTRACTS.AGIALPHA_SOLANA, chain: 'sol' as const },
               ].map((item) => (

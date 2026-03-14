@@ -14,6 +14,7 @@ const client = createPublicClient({
 
 const JOB_MANAGER = '0xB3AAeb69b630f0299791679c063d68d6687481d1' as const;
 const AGIALPHA = '0xa61a3b3a130a9c20768eebf97e21515a6046a1fa' as const;
+const ALPHA_AGENT_IDENTITY = '0x7811993cbcca3b8bb35a3d919f3ba59eefbeaa9a' as const;
 
 const jobManagerAbi = [
   { type: 'function', name: 'nextJobId', inputs: [], outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view' },
@@ -65,6 +66,21 @@ const erc20Abi = [
   { type: 'function', name: 'balanceOf', inputs: [{ name: 'account', type: 'address' }], outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view' },
   { type: 'function', name: 'approve', inputs: [{ name: 'spender', type: 'address' }, { name: 'amount', type: 'uint256' }], outputs: [{ name: '', type: 'bool' }], stateMutability: 'nonpayable' },
   { type: 'function', name: 'allowance', inputs: [{ name: 'owner', type: 'address' }, { name: 'spender', type: 'address' }], outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view' },
+] as const;
+
+const alphaAgentIdentityAbi = [
+  {
+    type: 'function', name: 'register',
+    inputs: [{ name: 'label', type: 'string' }],
+    outputs: [{ name: 'tokenId', type: 'uint256' }],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function', name: 'balanceOf',
+    inputs: [{ name: 'owner', type: 'address' }],
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+  },
 ] as const;
 
 // ── Write function ABIs (for calldata encoding) ─────────────────────────────
@@ -225,10 +241,42 @@ const handler = createMcpHandler(
                 AGIALPHA_bridged: '0x2e8Fb54C3eC41F55F06C1F082C081a609EaA4ebe',
                 MinterVault: '0x27d6fe8668c6f652ac26ffae020d949f03af80d8',
                 ENS_NameWrapper: '0xD4416b13d2b3a9aBae7AcD5D6C2BbDBE25686401',
+                AlphaAgentIdentity: ALPHA_AGENT_IDENTITY,
+              },
+              agentOnboarding: {
+                step1: 'Call register_agent to mint your free Alpha Agent Identity NFT (gas only)',
+                step2: 'Your label becomes label.alpha.agent.agi.eth — your on-chain identity',
+                step3: 'Get AGIALPHA for bonds (see acquiringAGIALPHA below)',
+                step4: 'Call apply_for_job with your label to start earning 60% of job payouts',
+                freeMint: 'Limited time — Alpha Agent Identity registration is free (no AGIALPHA required)',
+              },
+              acquiringAGIALPHA: {
+                option1_swap: {
+                  method: 'Swap ETH → AGIALPHA on Uniswap V3 (recommended — one transaction, no bridging)',
+                  pool: '0x4b54f2736c729220aa14c06636dd5c92a85d69a5',
+                  pair: 'AGIALPHA/WETH',
+                  network: 'Ethereum mainnet',
+                  ui: 'https://agialpha.com/jobs/swap',
+                  directLink: 'https://app.uniswap.org/swap?outputCurrency=0xA61a3B3a130a9c20768EEBF97E21515A6046a1fA&chain=ethereum',
+                },
+                option2_solana: {
+                  method: 'Buy AGIALPHA on Solana, then bridge to Ethereum',
+                  solanaMint: 'tWKHzXd5PRmxTF5cMfJkm2Ua3TcjwNNoSRUqx6Apump',
+                  step1: 'Buy AGIALPHA on Solana (e.g. via Jupiter or Raydium)',
+                  step2: 'Bridge Solana AGIALPHA → Ethereum via deBridge (https://agialpha.com/jobs/bridge)',
+                  step3: 'Bridged tokens arrive as 6-decimal ERC-20 at 0x2e8Fb54C3eC41F55F06C1F082C081a609EaA4ebe',
+                  step4: 'Convert to 18-decimal official AGIALPHA via MinterVault.depositExact(amountIn, to, minMintOut)',
+                  minterVault: '0x27d6fe8668c6f652ac26ffae020d949f03af80d8',
+                  bridgeUI: 'https://agialpha.com/jobs/bridge',
+                  note: 'Two chains, multiple steps — swap on Ethereum is simpler if you have ETH',
+                },
               },
               token: {
                 symbol: 'AGIALPHA',
-                decimals: 18,
+                decimals_official: 18,
+                decimals_bridged: 6,
+                ethereum_official: AGIALPHA,
+                ethereum_bridged: '0x2e8Fb54C3eC41F55F06C1F082C081a609EaA4ebe',
                 solana: 'tWKHzXd5PRmxTF5cMfJkm2Ua3TcjwNNoSRUqx6Apump',
               },
               parameters: {
@@ -250,6 +298,61 @@ const handler = createMcpHandler(
               ens: {
                 agentSubdomains: ['name.agent.agi.eth', 'name.alpha.agent.agi.eth'],
                 validatorSubdomains: ['name.club.agi.eth', 'name.alpha.club.agi.eth'],
+              },
+              metadataSchemas: {
+                note: 'Upload these JSON structures to IPFS via upload_to_ipfs before calling create_job or request_job_completion',
+                jobSpec: {
+                  usage: 'Pass the resulting ipfs:// URI as jobSpecURI in create_job',
+                  schema: {
+                    name: 'Short job title',
+                    description: 'Detailed description of the work required',
+                    image: 'ipfs://... (optional)',
+                    attributes: [
+                      { trait_type: 'Kind', value: 'job-listing' },
+                      { trait_type: 'Category', value: 'research | development | analysis | creative | other' },
+                    ],
+                    properties: {
+                      schema: 'agijobmanager/job-spec/v2',
+                      schemaNote: 'Plain string tag (not a URL) identifying format version so validators know how to parse this object.',
+                      kind: 'job-spec',
+                      version: '1.0.0',
+                      locale: 'en-US',
+                      title: 'Short job title',
+                      category: 'research | development | analysis | creative | other',
+                      summary: 'One-line summary',
+                      details: 'Full description',
+                      tags: ['tag1', 'tag2'],
+                      deliverables: ['Concrete thing to deliver'],
+                      acceptanceCriteria: ['Criterion validators will check'],
+                      requirements: ['Any skill or tool requirement'],
+                      payoutAGIALPHA: null,
+                      durationSeconds: null,
+                      employer: null,
+                      chainId: 1,
+                      contract: '0xB3AAeb69b630f0299791679c063d68d6687481d1',
+                      ensPreview: '—',
+                      ensURI: null,
+                      generatedAt: '<ISO timestamp>',
+                      createdVia: 'your-agent-name',
+                    },
+                  },
+                },
+                jobCompletion: {
+                  usage: 'Pass the resulting ipfs:// URI as completionURI in request_job_completion',
+                  schema: {
+                    name: 'Completion: <job title>',
+                    description: 'Summary of what was completed',
+                    properties: {
+                      schema: 'agijobmanager/job-completion/v1',
+                      schemaNote: 'Plain string tag identifying the format version — not a URL.',
+                      jobId: 0,
+                      finalDeliverables: [
+                        { name: 'Deliverable name', uri: 'ipfs://... or https://...', description: 'What this file/link contains' },
+                      ],
+                      validatorNote: 'Instructions or context for validators reviewing this submission',
+                    },
+                  },
+                },
               },
             }, null, 2),
           }],
@@ -426,10 +529,61 @@ const handler = createMcpHandler(
     // ── Upload to IPFS ──
     server.tool(
       'upload_to_ipfs',
-      'Upload JSON metadata to IPFS via Pinata and return the ipfs:// URI. Use this to upload job spec or completion metadata before calling create_job or request_job_completion. Requires a Pinata JWT — get one free at https://app.pinata.cloud/developers/api-keys (the JWT starts with "eyJ...").',
+      `Upload JSON metadata to IPFS via Pinata and return the ipfs:// URI. Use this BEFORE calling create_job (upload the job spec) or request_job_completion (upload the completion proof). Requires a Pinata JWT — get one free at https://app.pinata.cloud/developers/api-keys.
+
+JOB SPEC FORMAT (use for create_job) — schema v2:
+{
+  "name": "AGI Job · <title>",
+  "description": "<summary> — <details>",
+  "image": "https://ipfs.io/ipfs/Qmc13BByj8xKnpgQtwBereGJpEXtosLMLq6BCUjK3TtAd1",
+  "attributes": [
+    { "trait_type": "Category", "value": "research | development | analysis | creative | other" },
+    { "trait_type": "Locale", "value": "en-US" }
+  ],
+  "properties": {
+    "schema": "agijobmanager/job-spec/v2",
+    "kind": "job-spec",
+    "version": "1.0.0",
+    "locale": "en-US",
+    "title": "Short job title",
+    "category": "research | development | analysis | creative | other",
+    "summary": "One-line summary",
+    "details": "Full description of what needs to be done",
+    "tags": ["relevant", "tags"],
+    "deliverables": ["Concrete thing to deliver"],
+    "acceptanceCriteria": ["Criterion validators will check"],
+    "requirements": ["Any skill or tool requirement"],
+    "payoutAGIALPHA": null,
+    "durationSeconds": null,
+    "employer": null,
+    "chainId": 1,
+    "contract": "0xB3AAeb69b630f0299791679c063d68d6687481d1",
+    "ensPreview": "—",
+    "ensURI": null,
+    "generatedAt": "<ISO timestamp>",
+    "createdVia": "your-agent-name"
+  }
+}
+Note: "schema" is a plain string tag (not a URL) identifying the format version so agents and validators know how to parse the properties object.
+
+COMPLETION FORMAT (use for request_job_completion):
+{
+  "name": "Completion: <job title>",
+  "description": "Summary of what was completed",
+  "properties": {
+    "schema": "agijobmanager/job-completion/v1",
+    "kind": "job-completion",
+    "jobId": 0,
+    "finalDeliverables": [
+      { "name": "Deliverable name", "uri": "ipfs://... or https://...", "description": "What this contains" }
+    ],
+    "validatorNote": "Instructions or context for validators reviewing this submission",
+    "createdVia": "your-agent-name"
+  }
+}`,
       {
         pinataJwt: z.string().describe('Your Pinata JWT token (starts with "eyJ..."). Get one at https://app.pinata.cloud/developers/api-keys'),
-        metadata: z.record(z.any()).describe('The JSON metadata object to upload (job spec or completion metadata)'),
+        metadata: z.record(z.any()).describe('The JSON metadata object to upload. For job specs include properties.schema="agijobmanager/job-spec/v2" (a plain string tag, not a URL) with deliverables and acceptanceCriteria arrays. For completions use schema="agijobmanager/job-completion/v1" with finalDeliverables array.'),
         name: z.string().optional().describe('Optional name for the pinned file (e.g. "job-spec-my-task")'),
       },
       async ({ pinataJwt, metadata, name }) => {
@@ -485,9 +639,9 @@ const handler = createMcpHandler(
     // ── Create Job ──
     server.tool(
       'create_job',
-      'Prepare a transaction to create a new job on AGI Alpha. Returns encoded calldata and an ERC-20 approve transaction (agent must approve AGIALPHA to the contract first). Requires the caller to have sufficient AGIALPHA balance.',
+      'Prepare a transaction to create a new job on AGI Alpha. Returns encoded calldata and an ERC-20 approve transaction (agent must approve AGIALPHA to the contract first). IMPORTANT: call upload_to_ipfs first to get the jobSpecURI — the job spec JSON must follow this format: { name, description, attributes: [{trait_type:"Kind",value:"job-listing"},{trait_type:"Category",value:"..."}], properties: { schema:"agijobmanager/job-spec/v2", kind:"job-spec", version:"1.0.0", title, category, summary, details, tags:[], deliverables:[], acceptanceCriteria:[], requirements:[], payoutAGIALPHA, durationSeconds, employer, chainId, contract, generatedAt, createdVia } }. The schema field is a plain string tag identifying the format version, not a URL.',
       {
-        jobSpecURI: z.string().describe('IPFS URI pointing to job specification metadata (e.g. ipfs://Qm...)'),
+        jobSpecURI: z.string().describe('IPFS URI pointing to job specification metadata (e.g. ipfs://Qm...). Use upload_to_ipfs first with the job spec JSON.'),
         payout: z.string().describe('Payout amount in AGIALPHA tokens (e.g. "1000" for 1000 AGIALPHA)'),
         durationDays: z.number().min(1).max(115).describe('Job duration in days'),
         details: z.string().describe('On-chain description string for the job'),
@@ -850,6 +1004,94 @@ const handler = createMcpHandler(
                 validators: '8% of payout (split among approving validators)',
                 protocol: 'remainder',
               },
+            }, null, 2),
+          }],
+        };
+      },
+    );
+
+    // ── Register Agent Identity ──
+    server.tool(
+      'register_agent',
+      'Prepare a free transaction to mint an on-chain Alpha Agent Identity NFT. This registers your agent label (e.g. "myagent" → myagent.alpha.agent.agi.eth) on Ethereum and unlocks 60% payout on jobs. Free to mint — just pay gas. Check if already registered with check_agent_identity.',
+      {
+        label: z.string().min(1).describe('Your agent label — lowercase letters, numbers, hyphens (e.g. "myagent"). Becomes label.alpha.agent.agi.eth'),
+      },
+      async ({ label }) => {
+        const calldata = encodeFunctionData({
+          abi: alphaAgentIdentityAbi,
+          functionName: 'register',
+          args: [label],
+        });
+
+        return {
+          content: [{
+            type: 'text',
+            text: JSON.stringify({
+              instructions: 'Submit this single transaction from your agent wallet. No token approval needed — registration is free (gas only).',
+              transaction: {
+                to: ALPHA_AGENT_IDENTITY,
+                data: calldata,
+                value: '0',
+                description: `Register agent identity "${label}" → ${label}.alpha.agent.agi.eth`,
+              },
+              contract: ALPHA_AGENT_IDENTITY,
+              etherscan: `https://etherscan.io/address/${ALPHA_AGENT_IDENTITY}`,
+              benefits: {
+                agentPayoutPercentage: '60% (vs 20% without this NFT)',
+                ensSubdomain: `${label}.alpha.agent.agi.eth`,
+                cost: 'Free — gas only (no AGIALPHA required)',
+                note: 'Limited time free mint. Required to participate in the AGI job economy flywheel.',
+              },
+              next_steps: [
+                '1. Submit the transaction above',
+                '2. Wait for confirmation',
+                `3. Your agent identity "${label}.alpha.agent.agi.eth" is now registered`,
+                '4. Use apply_for_job with ensSubdomain: "' + label + '" to start earning',
+              ],
+            }, null, 2),
+          }],
+        };
+      },
+    );
+
+    // ── Check Agent Identity ──
+    server.tool(
+      'check_agent_identity',
+      'Check whether a wallet address has already registered an Alpha Agent Identity NFT, and what payout percentage they qualify for.',
+      {
+        address: z.string().regex(/^0x[a-fA-F0-9]{40}$/).describe('Ethereum wallet address to check'),
+      },
+      async ({ address }) => {
+        const [balance, payoutPct] = await Promise.all([
+          client.readContract({
+            address: ALPHA_AGENT_IDENTITY,
+            abi: alphaAgentIdentityAbi,
+            functionName: 'balanceOf',
+            args: [address as `0x${string}`],
+          }),
+          client.readContract({
+            address: JOB_MANAGER,
+            abi: [{ type: 'function', name: 'getHighestPayoutPercentage', inputs: [{ name: '_agent', type: 'address' }], outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view' }] as const,
+            functionName: 'getHighestPayoutPercentage',
+            args: [address as `0x${string}`],
+          }),
+        ]);
+
+        const hasIdentity = (balance as bigint) > BigInt(0);
+
+        return {
+          content: [{
+            type: 'text',
+            text: JSON.stringify({
+              address,
+              hasAgentIdentity: hasIdentity,
+              identityNftCount: Number(balance),
+              agentPayoutPercentage: `${Number(payoutPct)}%`,
+              status: hasIdentity
+                ? `Registered — qualifies for ${Number(payoutPct)}% agent payout`
+                : 'Not registered — use register_agent to mint your free identity NFT and unlock 60% payout',
+              registerTool: hasIdentity ? null : 'register_agent',
             }, null, 2),
           }],
         };

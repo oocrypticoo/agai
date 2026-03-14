@@ -12,22 +12,37 @@ const ENDPOINTS = [
     : []),
 ];
 
+// Priority order for agent subdomains — alpha variants are higher payout (80% vs 20%)
+function sortAgentPriority(names: string[]): string[] {
+  return [...names].sort((a, b) => {
+    const aAlpha = a.includes('.alpha.agent.agi.eth') ? 0 : 1;
+    const bAlpha = b.includes('.alpha.agent.agi.eth') ? 0 : 1;
+    return aAlpha - bAlpha;
+  });
+}
+
+function sortClubPriority(names: string[]): string[] {
+  return [...names].sort((a, b) => {
+    const aAlpha = a.includes('.alpha.club.agi.eth') ? 0 : 1;
+    const bAlpha = b.includes('.alpha.club.agi.eth') ? 0 : 1;
+    return aAlpha - bAlpha;
+  });
+}
+
 export async function GET(req: NextRequest) {
   const address = req.nextUrl.searchParams.get('address')?.toLowerCase();
   if (!address || !/^0x[a-f0-9]{40}$/.test(address)) {
     return NextResponse.json({ error: 'Invalid address' }, { status: 400 });
   }
 
-  // Query for domains owned by this address (both wrapped and unwrapped)
+  // Query both owned and wrapped domains
   const query = `{
     domains(where: {owner: "${address}"}, first: 100) {
       name
-      labelName
-      parent { name }
     }
     wrappedDomains(where: {owner: "${address}"}, first: 100) {
       name
-      domain { parent { name } }
+      domain { name }
     }
   }`;
 
@@ -51,33 +66,41 @@ export async function GET(req: NextRequest) {
 
       const json = await res.json();
       if (json?.data) {
-        // Extract agent and club subdomains from both queries
         const allNames: string[] = [];
 
-        // From domains query
         if (json.data.domains) {
           for (const d of json.data.domains) {
             if (d.name) allNames.push(d.name);
           }
         }
 
-        // From wrappedDomains query
         if (json.data.wrappedDomains) {
           for (const d of json.data.wrappedDomains) {
-            if (d.name) allNames.push(d.name);
+            // wrappedDomains may expose name directly or via domain.name
+            const name = d.name ?? d.domain?.name;
+            if (name) allNames.push(name);
           }
         }
 
         // Deduplicate
         const unique = [...new Set(allNames)];
 
-        // Find agent and club subdomains
-        const agent = unique.find(n => n.endsWith('.agent.agi.eth')) ?? null;
-        const club = unique.find(n => n.endsWith('.club.agi.eth')) ?? null;
+        // Collect all matching agent/club subdomains
+        const agentNames = sortAgentPriority(
+          unique.filter(n => n.endsWith('.agent.agi.eth'))
+        );
+        const clubNames = sortClubPriority(
+          unique.filter(n => n.endsWith('.club.agi.eth'))
+        );
 
-        return NextResponse.json({ agent, club, all: unique }, {
-          headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' },
-        });
+        // Best (highest payout priority) is first after sort
+        const agent = agentNames[0] ?? null;
+        const club = clubNames[0] ?? null;
+
+        return NextResponse.json(
+          { agent, club, agents: agentNames, clubs: clubNames, all: unique },
+          { headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' } }
+        );
       }
       lastError = `${endpoint}: no data in response`;
     } catch (err) {
@@ -85,5 +108,5 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ agent: null, club: null, error: lastError }, { status: 502 });
+  return NextResponse.json({ agent: null, club: null, agents: [], clubs: [], error: lastError }, { status: 502 });
 }
