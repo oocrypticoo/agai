@@ -696,7 +696,13 @@ export default function JobsDApp() {
     query: { enabled: validateSimEnabled && !!validateSimArgs, retry: false },
   });
 
-  const alreadyVoted = !!validateSimError;
+  // Only treat simulation failure as "already voted" if the user has sufficient
+  // bond — otherwise the revert is likely due to insufficient balance, not a double-vote
+  const validatorBondRequired = selectedJob?.status === 'In Review'
+    ? validatorBondFor(selectedJob.payout)
+    : BigInt(0);
+  const hasSufficientBond = !!(tokenBalance && (tokenBalance as bigint) >= validatorBondRequired);
+  const alreadyVoted = !!validateSimError && hasSufficientBond;
 
   // (Write hooks for approve/createJob moved to CreateJobBuilder component)
 
