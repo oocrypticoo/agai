@@ -288,6 +288,8 @@ export default function JobsDApp() {
   }
   const [completionMeta, setCompletionMeta] = useState<CompletionMeta | null>(null);
   const [completionMetaLoading, setCompletionMetaLoading] = useState(false);
+  // Track locally so button updates immediately after vote tx confirms (no simulation cache lag)
+  const [hasVotedJobId, setHasVotedJobId] = useState<number | null>(null);
 
   // (Create Job form state moved to CreateJobBuilder component)
 
@@ -732,7 +734,7 @@ export default function JobsDApp() {
     ? validatorBondFor(selectedJob.payout)
     : BigInt(0);
   const hasSufficientBond = !!(tokenBalance && (tokenBalance as bigint) >= validatorBondRequired);
-  const alreadyVoted = !!validateSimError && hasSufficientBond;
+  const alreadyVoted = (hasVotedJobId === selectedJob?.id) || (!!validateSimError && hasSufficientBond);
 
   // (Write hooks for approve/createJob moved to CreateJobBuilder component)
 
@@ -925,6 +927,7 @@ export default function JobsDApp() {
             if (needsApproval) {
               approveToken({ address: CONTRACTS.AGIALPHA_OFFICIAL, abi: erc20Abi, functionName: 'approve', args: [CONTRACTS.AGI_JOB_MANAGER, BigInt('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')] });
             } else {
+              setHasVotedJobId(selectedJob.id);
               executeJobAction({
                 address: CONTRACTS.AGI_JOB_MANAGER,
                 abi: agiJobManagerAbi,
@@ -950,6 +953,7 @@ export default function JobsDApp() {
             if (needsApproval) {
               approveToken({ address: CONTRACTS.AGIALPHA_OFFICIAL, abi: erc20Abi, functionName: 'approve', args: [CONTRACTS.AGI_JOB_MANAGER, BigInt('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')] });
             } else {
+              setHasVotedJobId(selectedJob.id);
               executeJobAction({
                 address: CONTRACTS.AGI_JOB_MANAGER,
                 abi: agiJobManagerAbi,
@@ -1007,7 +1011,7 @@ export default function JobsDApp() {
     }
 
     return actions;
-  }, [selectedJob, address, isConnected, userRole, ensAgent, ensClub, completionURIInput, executeJobAction, alreadyVoted, tokenBalance, tokenAllowance]);
+  }, [selectedJob, address, isConnected, userRole, ensAgent, ensClub, completionURIInput, executeJobAction, alreadyVoted, tokenBalance, tokenAllowance, hasVotedJobId, setHasVotedJobId]);
 
   // Reset action + completion meta when selected job changes
   useEffect(() => {
