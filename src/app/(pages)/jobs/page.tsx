@@ -279,11 +279,12 @@ export default function JobsDApp() {
   // Completion metadata for file explorer
   interface CompletionDeliverable { name: string; uri: string; gatewayURI?: string; description?: string; }
   interface CompletionMeta {
+    name?: string;
     image?: string;
     finalDeliverables?: CompletionDeliverable[];
     completionStatus?: string;
     submissionType?: string;
-    properties?: { finalDeliverables?: CompletionDeliverable[]; completionStatus?: string; };
+    properties?: { finalDeliverables?: CompletionDeliverable[]; finalImageURI?: string; completionStatus?: string; };
   }
   const [completionMeta, setCompletionMeta] = useState<CompletionMeta | null>(null);
   const [completionMetaLoading, setCompletionMetaLoading] = useState(false);
@@ -2238,43 +2239,52 @@ export default function JobsDApp() {
                       </div>
                     )}
                     {!completionMetaLoading && (() => {
-                      const deliverables = completionMeta?.finalDeliverables ?? completionMeta?.properties?.finalDeliverables;
-                      return deliverables && deliverables.length > 0 ? (
-                      <div className="rounded-xl border border-black/5 dark:border-white/5 overflow-hidden">
-                        {deliverables.map((d, i) => {
-                          const href = d.gatewayURI ?? (d.uri ? ipfsToHttp(d.uri) : null);
-                          const ext = (d.name ?? href ?? '').split('.').pop()?.split('?')[0]?.toUpperCase() ?? '';
-                          return (
+                      // Normalize to a common deliverable list regardless of schema version:
+                      // v1 with finalDeliverables array (job 3+), or image/finalImageURI (job 0)
+                      const structured = completionMeta?.finalDeliverables ?? completionMeta?.properties?.finalDeliverables;
+                      const imageURI = completionMeta?.properties?.finalImageURI ?? completionMeta?.image;
+                      const rows: { name: string; href: string; ext: string; description?: string }[] = [];
+
+                      if (structured && structured.length > 0) {
+                        for (const d of structured) {
+                          const href = d.gatewayURI ?? (d.uri ? ipfsToHttp(d.uri) : '');
+                          const ext = (d.name ?? href).split('.').pop()?.split('?')[0]?.toUpperCase() ?? 'FILE';
+                          rows.push({ name: d.name, href, ext, description: d.description });
+                        }
+                      } else if (imageURI) {
+                        const href = imageURI.startsWith('ipfs://') ? ipfsToHttp(imageURI) : imageURI;
+                        const ext = href.split('.').pop()?.split('?')[0]?.toUpperCase() ?? 'FILE';
+                        rows.push({ name: completionMeta?.name ?? 'Deliverable', href, ext });
+                      }
+
+                      return rows.length > 0 ? (
+                        <div className="rounded-xl border border-black/5 dark:border-white/5 overflow-hidden">
+                          {rows.map((d, i) => (
                             <div
                               key={i}
                               className={`flex items-center gap-3 px-3 py-2.5 ${i > 0 ? 'border-t border-black/5 dark:border-white/5' : ''} hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors`}
                             >
                               <div className="size-7 rounded-lg bg-[#805abe]/10 border border-[#805abe]/20 flex items-center justify-center shrink-0">
-                                <span className="text-[8px] font-mono font-bold text-[#805abe]">{ext || 'FILE'}</span>
+                                <span className="text-[8px] font-mono font-bold text-[#805abe]">{d.ext}</span>
                               </div>
                               <div className="flex-1 min-w-0">
                                 <p className="text-xs font-degular-medium text-heading truncate">{d.name}</p>
                                 {d.description && <p className="text-[10px] text-text/40 font-degular truncate">{d.description}</p>}
                               </div>
-                              {href && (
-                                <a
-                                  href={href}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
+                              {d.href && (
+                                <a href={d.href} target="_blank" rel="noopener noreferrer"
                                   className="shrink-0 p-1.5 rounded-lg border border-black/5 dark:border-white/5 text-text/40 hover:text-[#805abe] hover:border-[#805abe]/30 transition-all"
                                 >
                                   <ExternalLink className="size-3" />
                                 </a>
                               )}
                             </div>
-                          );
-                        })}
-                      </div>
+                          ))}
+                        </div>
+                      ) : completionMeta ? (
+                        <p className="text-xs text-text/30 font-degular">No deliverables metadata found.</p>
                       ) : null;
                     })()}
-                    {!completionMetaLoading && completionMeta && !(completionMeta.finalDeliverables ?? completionMeta.properties?.finalDeliverables) && (
-                      <p className="text-xs text-text/30 font-degular">No deliverables metadata found.</p>
-                    )}
                   </div>
                 )}
               </div>
