@@ -19,7 +19,7 @@ function decodeConnectError(error: unknown): string {
 }
 
 export function WalletButton() {
-  const { address, isConnected, isConnecting, chain } = useAccount();
+  const { address, isConnected, chain } = useAccount();
   const { connect, connectors, isPending, error, reset } = useConnect();
   const { disconnect } = useDisconnect();
   const { switchChain } = useSwitchChain();
@@ -29,8 +29,9 @@ export function WalletButton() {
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const wrongNetwork = isConnected && chain?.id !== mainnet.id;
-  // Only block UI for user-initiated connects, not background reconnects
-  const loading = isConnecting || isPending;
+  // isPending = user-initiated connect only; isConnecting/isReconnecting can be true
+  // on page refresh during background auto-reconnect and should not block the UI
+  const loading = isPending;
 
   // Detect if any injected wallet exists on the client
   useEffect(() => {
