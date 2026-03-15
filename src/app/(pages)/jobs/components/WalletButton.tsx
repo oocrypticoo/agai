@@ -23,8 +23,14 @@ export function WalletButton() {
 
   function handleConnect() {
     setConnectError('');
-    const injected = connectors.find(c => c.type === 'injected') ?? connectors[0];
-    if (injected) connect({ connector: injected });
+    // Prefer MetaMask via EIP-6963 (avoids Leap/Cosmos wallets that hijack window.ethereum)
+    const w = typeof window !== 'undefined' ? (window as unknown as { ethereum?: { isMetaMask?: boolean } }) : null;
+    const connector =
+      connectors.find(c => c.id === 'io.metamask') ??
+      connectors.find(c => c.type === 'injected' && w?.ethereum?.isMetaMask) ??
+      connectors.find(c => c.type === 'injected') ??
+      connectors[0];
+    if (connector) connect({ connector });
   }
 
   if (!isConnected) {
