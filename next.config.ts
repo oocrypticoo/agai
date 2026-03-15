@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  reactStrictMode: false, // wagmi connectors don't support React Strict Mode double-invoke
   turbopack: {
     root: __dirname,
     resolveAlias: {
