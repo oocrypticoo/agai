@@ -278,7 +278,13 @@ export default function JobsDApp() {
 
   // Completion metadata for file explorer
   interface CompletionDeliverable { name: string; uri: string; gatewayURI?: string; description?: string; }
-  interface CompletionMeta { image?: string; finalDeliverables?: CompletionDeliverable[]; completionStatus?: string; submissionType?: string; }
+  interface CompletionMeta {
+    image?: string;
+    finalDeliverables?: CompletionDeliverable[];
+    completionStatus?: string;
+    submissionType?: string;
+    properties?: { finalDeliverables?: CompletionDeliverable[]; completionStatus?: string; };
+  }
   const [completionMeta, setCompletionMeta] = useState<CompletionMeta | null>(null);
   const [completionMetaLoading, setCompletionMetaLoading] = useState(false);
 
@@ -2231,9 +2237,11 @@ export default function JobsDApp() {
                         Loading deliverables...
                       </div>
                     )}
-                    {!completionMetaLoading && completionMeta?.finalDeliverables && completionMeta.finalDeliverables.length > 0 && (
+                    {!completionMetaLoading && (() => {
+                      const deliverables = completionMeta?.finalDeliverables ?? completionMeta?.properties?.finalDeliverables;
+                      return deliverables && deliverables.length > 0 ? (
                       <div className="rounded-xl border border-black/5 dark:border-white/5 overflow-hidden">
-                        {completionMeta.finalDeliverables.map((d, i) => {
+                        {deliverables.map((d, i) => {
                           const href = d.gatewayURI ?? (d.uri ? ipfsToHttp(d.uri) : null);
                           const ext = (d.name ?? href ?? '').split('.').pop()?.split('?')[0]?.toUpperCase() ?? '';
                           return (
@@ -2262,8 +2270,9 @@ export default function JobsDApp() {
                           );
                         })}
                       </div>
-                    )}
-                    {!completionMetaLoading && !completionMeta?.finalDeliverables && (
+                      ) : null;
+                    })()}
+                    {!completionMetaLoading && completionMeta && !(completionMeta.finalDeliverables ?? completionMeta.properties?.finalDeliverables) && (
                       <p className="text-xs text-text/30 font-degular">No deliverables metadata found.</p>
                     )}
                   </div>
