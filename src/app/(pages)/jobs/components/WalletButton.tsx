@@ -12,7 +12,9 @@ export function WalletButton() {
   const [connectError, setConnectError] = useState('');
 
   const wrongNetwork = isConnected && chain?.id !== mainnet.id;
-  const loading = isConnecting || isReconnecting;
+  // isReconnecting fires on every page load when restoring a previous session
+  // and can hang indefinitely — only block UI for user-initiated connects
+  const loading = isConnecting;
 
   // Clear stuck pending state after timeout
   useEffect(() => {
