@@ -1,133 +1,59 @@
 'use client';
 import { useAccount, useConnect, useDisconnect, useSwitchChain } from 'wagmi';
 import { mainnet } from 'wagmi/chains';
-import { Wallet, LogOut, AlertTriangle, ExternalLink, X } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
-
-const CONNECT_TIMEOUT_MS = 15_000;
-
-function decodeConnectError(error: unknown): string {
-  const msg = (error as Error)?.message ?? String(error);
-  if (msg.includes('rejected') || msg.includes('User rejected')) return 'Rejected';
-  if (msg.includes('already pending')) return 'Check your wallet — a request is pending';
-  if (
-    msg.includes('Connector not found') ||
-    msg.includes('Provider not found') ||
-    msg.includes('No provider')
-  ) return 'No wallet found';
-  return 'Connection failed';
-}
+import { Wallet, LogOut, AlertTriangle } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 export function WalletButton() {
-  const { address, isConnected, chain } = useAccount();
+  const { address, isConnected, isConnecting, isReconnecting, chain, status } = useAccount();
   const { connect, connectors, isPending, error, reset } = useConnect();
   const { disconnect } = useDisconnect();
   const { switchChain } = useSwitchChain();
   const [connectError, setConnectError] = useState('');
-  const [noWallet, setNoWallet] = useState(false);
-  const [timedOut, setTimedOut] = useState(false);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const wrongNetwork = isConnected && chain?.id !== mainnet.id;
-  // isPending = user-initiated connect only; isConnecting/isReconnecting can be true
-  // on page refresh during background auto-reconnect and should not block the UI
-  const loading = isPending;
+  const loading = isConnecting || isReconnecting;
 
-  // Detect if any injected wallet exists on the client
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setNoWallet(!window.ethereum);
-    }
-  }, []);
-
-  // Auto-cancel if stuck connecting too long
-  useEffect(() => {
-    if (loading) {
-      setTimedOut(false);
-      timeoutRef.current = setTimeout(() => setTimedOut(true), CONNECT_TIMEOUT_MS);
-    } else {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-      setTimedOut(false);
-    }
-    return () => { if (timeoutRef.current) clearTimeout(timeoutRef.current); };
-  }, [loading]);
-
+  // Clear stuck pending state after timeout
   useEffect(() => {
     if (error) {
-      const msg = decodeConnectError(error);
-      setConnectError(msg);
-      if (msg === 'No wallet found') setNoWallet(true);
-      const t = setTimeout(() => { setConnectError(''); reset(); }, 4000);
+      setConnectError(error.message.includes('rejected') ? 'Rejected' : 'Connection failed');
+      const t = setTimeout(() => { setConnectError(''); reset(); }, 3000);
       return () => clearTimeout(t);
     }
   }, [error, reset]);
 
   function handleConnect() {
     setConnectError('');
-    setTimedOut(false);
-    if (noWallet) return;
     const injected = connectors.find(c => c.type === 'injected') ?? connectors[0];
     if (injected) {
       connect({ connector: injected });
-    } else {
-      setNoWallet(true);
     }
   }
 
-  function handleCancel() {
-    reset();
-    disconnect();
-    setTimedOut(false);
-    setConnectError('');
-  }
-
-  if (!isConnected) {
-    if (noWallet) {
-      return (
-        <a
-          href="https://metamask.io/download/"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-300 text-sm font-degular-medium hover:bg-amber-500/20 transition-all duration-300"
-        >
-          <ExternalLink className="size-4" />
-          Install MetaMask
-        </a>
-      );
-    }
-
-    if (loading) {
-      return (
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[#805abe]/30 bg-[#805abe]/10 text-[#805abe] text-sm font-degular-medium">
-            <div className="size-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-            {timedOut ? 'Check MetaMask popup...' : 'Connecting...'}
-          </div>
-          {(timedOut) && (
-            <button
-              onClick={handleCancel}
-              className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl border border-black/10 dark:border-white/10 text-text/50 text-xs font-degular-medium hover:text-red-400 hover:border-red-400/30 transition-all duration-300"
-            >
-              <X className="size-3.5" />
-              Cancel
-            </button>
-          )}
-        </div>
-      );
-    }
-
+  if (!isConnected && !loading) {
     return (
       <div className="flex items-center gap-2">
         <button
           onClick={handleConnect}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#805abe] hover:bg-[#9370cb] text-white text-sm font-degular-medium transition-all duration-300"
+          disabled={isPending}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#805abe] hover:bg-[#9370cb] text-white text-sm font-degular-medium transition-all duration-300 disabled:opacity-50"
         >
           <Wallet className="size-4" />
-          Connect Wallet
+          {isPending ? 'Confirm in wallet...' : 'Connect Wallet'}
         </button>
         {connectError && (
           <span className="text-red-400 text-xs font-degular-medium">{connectError}</span>
         )}
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[#805abe]/30 bg-[#805abe]/10 text-[#805abe] text-sm font-degular-medium">
+        <div className="size-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+        Connecting...
       </div>
     );
   }
