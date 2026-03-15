@@ -737,6 +737,7 @@ export default function JobsDApp() {
     icon: LucideIcon;
     colorClass: string;
     needsCompletionURI?: boolean;
+    disabled?: boolean;
     execute: () => void;
   }
 
@@ -845,9 +846,11 @@ export default function JobsDApp() {
         const requiredBond = validatorBondFor(selectedJob.payout);
         const balance = tokenBalance as bigint | undefined;
         const bondDisplay = formatUnits(requiredBond, 18);
+        const alreadyVoted = !!address && validators.some(v => v.address.toLowerCase() === address.toLowerCase());
 
         actions.push({
-          label: 'Approve',
+          label: alreadyVoted ? 'Approved ✓' : 'Approve',
+          disabled: alreadyVoted,
           icon: ThumbsUp,
           colorClass: actionColorMap.emerald,
           execute: () => {
@@ -871,7 +874,8 @@ export default function JobsDApp() {
           },
         });
         actions.push({
-          label: 'Disapprove',
+          label: alreadyVoted ? 'Disapprove' : 'Disapprove',
+          disabled: alreadyVoted,
           icon: ThumbsDown,
           colorClass: actionColorMap.red,
           execute: () => {
@@ -1469,6 +1473,8 @@ export default function JobsDApp() {
                           const bal = tokenBalance as bigint | undefined;
                           const bondStr = formatUnits(rBond, 18);
                           const balStr = bal ? formatUnits(bal, 18) : '0';
+                          const rowAlreadyVoted = !!addr && job.id === selectedJob?.id &&
+                            validators.some(v => v.address.toLowerCase() === addr);
                           const checkBond = () => {
                             if (!bal || bal < rBond) {
                               setActionError(`Insufficient balance for validator bond. Need ${bondStr} AGIALPHA, have ${balStr}`);
@@ -1476,28 +1482,32 @@ export default function JobsDApp() {
                             }
                             return true;
                           };
-                          btns.push(btn('Approve', 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20', () => {
-                            setActionError(null);
-                            if (!checkBond()) return;
-                            const allowance = tokenAllowance as bigint | undefined;
-                            const needsApproval = !allowance || allowance === BigInt(0);
-                            if (needsApproval) {
-                              approveToken({ address: CONTRACTS.AGIALPHA_OFFICIAL, abi: erc20Abi, functionName: 'approve', args: [CONTRACTS.AGI_JOB_MANAGER, BigInt('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')] });
-                            } else {
-                              executeJobAction({ address: CONTRACTS.AGI_JOB_MANAGER, abi: agiJobManagerAbi, functionName: 'validateJob', args: [jobId, extractSubdomainLabel(ensClub!), [] as readonly `0x${string}`[]] });
-                            }
-                          }));
-                          btns.push(btn('Disapprove', 'bg-red-500/10 border-red-500/20 text-red-400 hover:bg-red-500/20', () => {
-                            setActionError(null);
-                            if (!checkBond()) return;
-                            const allowance = tokenAllowance as bigint | undefined;
-                            const needsApproval = !allowance || allowance === BigInt(0);
-                            if (needsApproval) {
-                              approveToken({ address: CONTRACTS.AGIALPHA_OFFICIAL, abi: erc20Abi, functionName: 'approve', args: [CONTRACTS.AGI_JOB_MANAGER, BigInt('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')] });
-                            } else {
-                              executeJobAction({ address: CONTRACTS.AGI_JOB_MANAGER, abi: agiJobManagerAbi, functionName: 'disapproveJob', args: [jobId, extractSubdomainLabel(ensClub!), [] as readonly `0x${string}`[]] });
-                            }
-                          }));
+                          if (!rowAlreadyVoted) {
+                            btns.push(btn('Approve', 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20', () => {
+                              setActionError(null);
+                              if (!checkBond()) return;
+                              const allowance = tokenAllowance as bigint | undefined;
+                              const needsApproval = !allowance || allowance === BigInt(0);
+                              if (needsApproval) {
+                                approveToken({ address: CONTRACTS.AGIALPHA_OFFICIAL, abi: erc20Abi, functionName: 'approve', args: [CONTRACTS.AGI_JOB_MANAGER, BigInt('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')] });
+                              } else {
+                                executeJobAction({ address: CONTRACTS.AGI_JOB_MANAGER, abi: agiJobManagerAbi, functionName: 'validateJob', args: [jobId, extractSubdomainLabel(ensClub!), [] as readonly `0x${string}`[]] });
+                              }
+                            }));
+                            btns.push(btn('Disapprove', 'bg-red-500/10 border-red-500/20 text-red-400 hover:bg-red-500/20', () => {
+                              setActionError(null);
+                              if (!checkBond()) return;
+                              const allowance = tokenAllowance as bigint | undefined;
+                              const needsApproval = !allowance || allowance === BigInt(0);
+                              if (needsApproval) {
+                                approveToken({ address: CONTRACTS.AGIALPHA_OFFICIAL, abi: erc20Abi, functionName: 'approve', args: [CONTRACTS.AGI_JOB_MANAGER, BigInt('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')] });
+                              } else {
+                                executeJobAction({ address: CONTRACTS.AGI_JOB_MANAGER, abi: agiJobManagerAbi, functionName: 'disapproveJob', args: [jobId, extractSubdomainLabel(ensClub!), [] as readonly `0x${string}`[]] });
+                              }
+                            }));
+                          } else {
+                            btns.push(<span key="voted" className="px-2 py-0.5 rounded-md border border-emerald-500/20 text-xs text-emerald-400/60 font-degular-medium">Voted ✓</span>);
+                          }
                         }
                         if (isEmp) btns.push(btn('Dispute', 'bg-amber-500/10 border-amber-500/20 text-amber-400 hover:bg-amber-500/20', () => {
                           setActionError(null);
@@ -2190,8 +2200,8 @@ export default function JobsDApp() {
                       return (
                         <button
                           key={action.label}
-                          onClick={action.execute}
-                          disabled={isActionPending || isActionConfirming || isApproving || isApproveConfirming}
+                          onClick={action.disabled ? undefined : action.execute}
+                          disabled={action.disabled || isActionPending || isActionConfirming || isApproving || isApproveConfirming}
                           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-degular-medium transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed ${action.colorClass}`}
                         >
                           <Icon className="size-3.5" />
