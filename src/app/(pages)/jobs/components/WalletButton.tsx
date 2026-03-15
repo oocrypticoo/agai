@@ -1,8 +1,10 @@
 'use client';
 import { useAccount, useConnect, useDisconnect, useSwitchChain } from 'wagmi';
 import { mainnet } from 'wagmi/chains';
-import { Wallet, LogOut, AlertTriangle, ExternalLink } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { Wallet, LogOut, AlertTriangle, ExternalLink, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+
+const CONNECT_TIMEOUT_MS = 15_000;
 
 function decodeConnectError(error: unknown): string {
   const msg = (error as Error)?.message ?? String(error);
@@ -17,15 +19,18 @@ function decodeConnectError(error: unknown): string {
 }
 
 export function WalletButton() {
-  const { address, isConnected, isConnecting, isReconnecting, chain } = useAccount();
+  const { address, isConnected, isConnecting, chain } = useAccount();
   const { connect, connectors, isPending, error, reset } = useConnect();
   const { disconnect } = useDisconnect();
   const { switchChain } = useSwitchChain();
   const [connectError, setConnectError] = useState('');
   const [noWallet, setNoWallet] = useState(false);
+  const [timedOut, setTimedOut] = useState(false);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const wrongNetwork = isConnected && chain?.id !== mainnet.id;
-  const loading = isConnecting || isReconnecting;
+  // Only block UI for user-initiated connects, not background reconnects
+  const loading = isConnecting || isPending;
 
   // Detect if any injected wallet exists on the client
   useEffect(() => {
@@ -33,6 +38,18 @@ export function WalletButton() {
       setNoWallet(!window.ethereum);
     }
   }, []);
+
+  // Auto-cancel if stuck connecting too long
+  useEffect(() => {
+    if (loading) {
+      setTimedOut(false);
+      timeoutRef.current = setTimeout(() => setTimedOut(true), CONNECT_TIMEOUT_MS);
+    } else {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      setTimedOut(false);
+    }
+    return () => { if (timeoutRef.current) clearTimeout(timeoutRef.current); };
+  }, [loading]);
 
   useEffect(() => {
     if (error) {
@@ -46,7 +63,8 @@ export function WalletButton() {
 
   function handleConnect() {
     setConnectError('');
-    if (noWallet) return; // handled by UI below
+    setTimedOut(false);
+    if (noWallet) return;
     const injected = connectors.find(c => c.type === 'injected') ?? connectors[0];
     if (injected) {
       connect({ connector: injected });
@@ -55,7 +73,14 @@ export function WalletButton() {
     }
   }
 
-  if (!isConnected && !loading) {
+  function handleCancel() {
+    reset();
+    disconnect();
+    setTimedOut(false);
+    setConnectError('');
+  }
+
+  if (!isConnected) {
     if (noWallet) {
       return (
         <a
@@ -70,28 +95,38 @@ export function WalletButton() {
       );
     }
 
+    if (loading) {
+      return (
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[#805abe]/30 bg-[#805abe]/10 text-[#805abe] text-sm font-degular-medium">
+            <div className="size-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+            {timedOut ? 'Check MetaMask popup...' : 'Connecting...'}
+          </div>
+          {(timedOut) && (
+            <button
+              onClick={handleCancel}
+              className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl border border-black/10 dark:border-white/10 text-text/50 text-xs font-degular-medium hover:text-red-400 hover:border-red-400/30 transition-all duration-300"
+            >
+              <X className="size-3.5" />
+              Cancel
+            </button>
+          )}
+        </div>
+      );
+    }
+
     return (
       <div className="flex items-center gap-2">
         <button
           onClick={handleConnect}
-          disabled={isPending}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#805abe] hover:bg-[#9370cb] text-white text-sm font-degular-medium transition-all duration-300 disabled:opacity-50"
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#805abe] hover:bg-[#9370cb] text-white text-sm font-degular-medium transition-all duration-300"
         >
           <Wallet className="size-4" />
-          {isPending ? 'Confirm in wallet...' : 'Connect Wallet'}
+          Connect Wallet
         </button>
         {connectError && (
           <span className="text-red-400 text-xs font-degular-medium">{connectError}</span>
         )}
-      </div>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[#805abe]/30 bg-[#805abe]/10 text-[#805abe] text-sm font-degular-medium">
-        <div className="size-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-        Connecting...
       </div>
     );
   }
