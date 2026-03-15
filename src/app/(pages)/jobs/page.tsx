@@ -225,7 +225,7 @@ const contractBase = {
 // ─── IPFS gateway helper ──────────────────────────────────────────────────────
 
 function ipfsToHttp(uri: string): string {
-  if (uri.startsWith('ipfs://')) return `https://ipfs.io/ipfs/${uri.slice(7)}`;
+  if (uri.startsWith('ipfs://')) return `https://dweb.link/ipfs/${uri.slice(7)}`;
   return uri;
 }
 
@@ -280,6 +280,7 @@ export default function JobsDApp() {
   interface CompletionDeliverable { name: string; uri: string; gatewayURI?: string; description?: string; }
   interface CompletionMeta { image?: string; finalDeliverables?: CompletionDeliverable[]; completionStatus?: string; submissionType?: string; }
   const [completionMeta, setCompletionMeta] = useState<CompletionMeta | null>(null);
+  const [completionMetaLoading, setCompletionMetaLoading] = useState(false);
 
   // (Create Job form state moved to CreateJobBuilder component)
 
@@ -624,13 +625,18 @@ export default function JobsDApp() {
   // Fetch completion metadata for file explorer
   useEffect(() => {
     const uri = selectedJob?.completionURI;
-    if (!uri) { setCompletionMeta(null); return; }
+    if (!uri) { setCompletionMeta(null); setCompletionMetaLoading(false); return; }
     let cancelled = false;
-    fetch(ipfsToHttp(uri))
+    setCompletionMetaLoading(true);
+    setCompletionMeta(null);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 15000);
+    fetch(ipfsToHttp(uri), { signal: controller.signal })
       .then(r => r.json())
-      .then(json => { if (!cancelled) setCompletionMeta(json); })
-      .catch(() => { if (!cancelled) setCompletionMeta(null); });
-    return () => { cancelled = true; };
+      .then(json => { if (!cancelled) { setCompletionMeta(json); setCompletionMetaLoading(false); } })
+      .catch(() => { if (!cancelled) setCompletionMetaLoading(false); })
+      .finally(() => clearTimeout(timer));
+    return () => { cancelled = true; controller.abort(); };
   }, [selectedJob?.completionURI]);
 
   // Protocol parameters (single multicall) — using verified function names
@@ -994,6 +1000,7 @@ export default function JobsDApp() {
   // Reset action + completion meta when selected job changes
   useEffect(() => {
     setCompletionMeta(null);
+    setCompletionMetaLoading(false);
     setCompletionURIInput('');
     setActionError(null);
     setPendingApplyJobId(null);
@@ -2215,39 +2222,50 @@ export default function JobsDApp() {
                 </div>
 
                 {/* ── Deliverables file explorer ── */}
-                {completionMeta?.finalDeliverables && completionMeta.finalDeliverables.length > 0 && (
+                {selectedJob.completionURI && (
                   <div className="border-t border-black/5 dark:border-white/5 pt-4">
                     <p className="text-[10px] font-degular-medium text-text/40 uppercase tracking-wider mb-2">Deliverables</p>
-                    <div className="rounded-xl border border-black/5 dark:border-white/5 overflow-hidden">
-                      {completionMeta.finalDeliverables.map((d, i) => {
-                        const href = d.gatewayURI ?? (d.uri ? ipfsToHttp(d.uri) : null);
-                        const ext = href?.split('.').pop()?.split('?')[0]?.toUpperCase() ?? '';
-                        return (
-                          <div
-                            key={i}
-                            className={`flex items-center gap-3 px-3 py-2.5 ${i > 0 ? 'border-t border-black/5 dark:border-white/5' : ''} hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors`}
-                          >
-                            <div className="size-7 rounded-lg bg-[#805abe]/10 border border-[#805abe]/20 flex items-center justify-center shrink-0">
-                              <span className="text-[8px] font-mono font-bold text-[#805abe]">{ext || 'FILE'}</span>
+                    {completionMetaLoading && (
+                      <div className="flex items-center gap-2 text-xs text-text/40 font-degular">
+                        <Loader2 className="size-3 animate-spin" />
+                        Loading deliverables...
+                      </div>
+                    )}
+                    {!completionMetaLoading && completionMeta?.finalDeliverables && completionMeta.finalDeliverables.length > 0 && (
+                      <div className="rounded-xl border border-black/5 dark:border-white/5 overflow-hidden">
+                        {completionMeta.finalDeliverables.map((d, i) => {
+                          const href = d.gatewayURI ?? (d.uri ? ipfsToHttp(d.uri) : null);
+                          const ext = (d.name ?? href ?? '').split('.').pop()?.split('?')[0]?.toUpperCase() ?? '';
+                          return (
+                            <div
+                              key={i}
+                              className={`flex items-center gap-3 px-3 py-2.5 ${i > 0 ? 'border-t border-black/5 dark:border-white/5' : ''} hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors`}
+                            >
+                              <div className="size-7 rounded-lg bg-[#805abe]/10 border border-[#805abe]/20 flex items-center justify-center shrink-0">
+                                <span className="text-[8px] font-mono font-bold text-[#805abe]">{ext || 'FILE'}</span>
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-degular-medium text-heading truncate">{d.name}</p>
+                                {d.description && <p className="text-[10px] text-text/40 font-degular truncate">{d.description}</p>}
+                              </div>
+                              {href && (
+                                <a
+                                  href={href}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="shrink-0 p-1.5 rounded-lg border border-black/5 dark:border-white/5 text-text/40 hover:text-[#805abe] hover:border-[#805abe]/30 transition-all"
+                                >
+                                  <ExternalLink className="size-3" />
+                                </a>
+                              )}
                             </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-degular-medium text-heading truncate">{d.name}</p>
-                              {d.description && <p className="text-[10px] text-text/40 font-degular truncate">{d.description}</p>}
-                            </div>
-                            {href && (
-                              <a
-                                href={href}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="shrink-0 p-1.5 rounded-lg border border-black/5 dark:border-white/5 text-text/40 hover:text-[#805abe] hover:border-[#805abe]/30 transition-all"
-                              >
-                                <ExternalLink className="size-3" />
-                              </a>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                    {!completionMetaLoading && !completionMeta?.finalDeliverables && (
+                      <p className="text-xs text-text/30 font-degular">No deliverables metadata found.</p>
+                    )}
                   </div>
                 )}
               </div>
