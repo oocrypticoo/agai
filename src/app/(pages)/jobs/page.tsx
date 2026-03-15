@@ -717,7 +717,7 @@ export default function JobsDApp() {
 
   // Simulate validateJob — reverts with InvalidState() if address already voted
   // (contract checks approvals[msg.sender] || disapprovals[msg.sender] before executing)
-  const { error: validateSimError } = useSimulateContract({
+  const { error: validateSimError, refetch: refetchValidateSim } = useSimulateContract({
     address: CONTRACTS.AGI_JOB_MANAGER,
     abi: agiJobManagerAbi,
     functionName: 'validateJob',
@@ -776,6 +776,11 @@ export default function JobsDApp() {
   const { isLoading: isActionConfirming, isSuccess: isActionConfirmed } = useWaitForTransactionReceipt({
     hash: actionTxHash,
   });
+
+  // After any job action confirms, re-run the validate simulation so alreadyVoted updates
+  useEffect(() => {
+    if (isActionConfirmed) refetchValidateSim();
+  }, [isActionConfirmed]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── User role relative to selected job ────────────────────────────────
   const userRole = useMemo(() => {
