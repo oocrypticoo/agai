@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   useWriteContract,
   useWaitForTransactionReceipt,
@@ -24,6 +24,11 @@ function decodeRegisterError(error: unknown): string {
 
 export function RegisterAgentPanel() {
   const [label, setLabel] = useState('');
+  const [noWallet, setNoWallet] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') setNoWallet(!window.ethereum);
+  }, []);
 
   const { address, isConnected, chain } = useAccount();
   const { connect, connectors, isPending: isConnecting } = useConnect();
@@ -143,7 +148,7 @@ export function RegisterAgentPanel() {
       </div>
 
       {/* Not connected */}
-      {!isConnected && (
+      {!isConnected && !noWallet && (
         <button
           onClick={connectWallet}
           disabled={isConnecting}
@@ -152,6 +157,17 @@ export function RegisterAgentPanel() {
           <Wallet className="size-4" />
           {isConnecting ? 'Connecting...' : 'Connect Wallet to Register'}
         </button>
+      )}
+      {!isConnected && noWallet && (
+        <a
+          href="https://metamask.io/download/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-300 text-sm font-degular-medium hover:bg-amber-500/20 transition-all duration-200"
+        >
+          <ExternalLink className="size-4" />
+          Install MetaMask to Register
+        </a>
       )}
 
       {/* Wrong chain */}

@@ -1,37 +1,75 @@
 'use client';
 import { useAccount, useConnect, useDisconnect, useSwitchChain } from 'wagmi';
 import { mainnet } from 'wagmi/chains';
-import { Wallet, LogOut, AlertTriangle } from 'lucide-react';
+import { Wallet, LogOut, AlertTriangle, ExternalLink } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
+function decodeConnectError(error: unknown): string {
+  const msg = (error as Error)?.message ?? String(error);
+  if (msg.includes('rejected') || msg.includes('User rejected')) return 'Rejected';
+  if (msg.includes('already pending')) return 'Check your wallet — a request is pending';
+  if (
+    msg.includes('Connector not found') ||
+    msg.includes('Provider not found') ||
+    msg.includes('No provider')
+  ) return 'No wallet found';
+  return 'Connection failed';
+}
+
 export function WalletButton() {
-  const { address, isConnected, isConnecting, isReconnecting, chain, status } = useAccount();
+  const { address, isConnected, isConnecting, isReconnecting, chain } = useAccount();
   const { connect, connectors, isPending, error, reset } = useConnect();
   const { disconnect } = useDisconnect();
   const { switchChain } = useSwitchChain();
   const [connectError, setConnectError] = useState('');
+  const [noWallet, setNoWallet] = useState(false);
 
   const wrongNetwork = isConnected && chain?.id !== mainnet.id;
   const loading = isConnecting || isReconnecting;
 
-  // Clear stuck pending state after timeout
+  // Detect if any injected wallet exists on the client
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setNoWallet(!window.ethereum);
+    }
+  }, []);
+
   useEffect(() => {
     if (error) {
-      setConnectError(error.message.includes('rejected') ? 'Rejected' : 'Connection failed');
-      const t = setTimeout(() => { setConnectError(''); reset(); }, 3000);
+      const msg = decodeConnectError(error);
+      setConnectError(msg);
+      if (msg === 'No wallet found') setNoWallet(true);
+      const t = setTimeout(() => { setConnectError(''); reset(); }, 4000);
       return () => clearTimeout(t);
     }
   }, [error, reset]);
 
   function handleConnect() {
     setConnectError('');
+    if (noWallet) return; // handled by UI below
     const injected = connectors.find(c => c.type === 'injected') ?? connectors[0];
     if (injected) {
       connect({ connector: injected });
+    } else {
+      setNoWallet(true);
     }
   }
 
   if (!isConnected && !loading) {
+    if (noWallet) {
+      return (
+        <a
+          href="https://metamask.io/download/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-300 text-sm font-degular-medium hover:bg-amber-500/20 transition-all duration-300"
+        >
+          <ExternalLink className="size-4" />
+          Install MetaMask
+        </a>
+      );
+    }
+
     return (
       <div className="flex items-center gap-2">
         <button
