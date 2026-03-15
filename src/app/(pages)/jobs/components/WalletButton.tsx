@@ -5,18 +5,14 @@ import { Wallet, LogOut, AlertTriangle } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 export function WalletButton() {
-  const { address, isConnected, isConnecting, isReconnecting, chain, status } = useAccount();
+  const { address, isConnected, chain } = useAccount();
   const { connect, connectors, isPending, error, reset } = useConnect();
   const { disconnect } = useDisconnect();
   const { switchChain } = useSwitchChain();
   const [connectError, setConnectError] = useState('');
 
   const wrongNetwork = isConnected && chain?.id !== mainnet.id;
-  // isReconnecting fires on every page load when restoring a previous session
-  // and can hang indefinitely — only block UI for user-initiated connects
-  const loading = isConnecting;
 
-  // Clear stuck pending state after timeout
   useEffect(() => {
     if (error) {
       setConnectError(error.message.includes('rejected') ? 'Rejected' : 'Connection failed');
@@ -28,12 +24,10 @@ export function WalletButton() {
   function handleConnect() {
     setConnectError('');
     const injected = connectors.find(c => c.type === 'injected') ?? connectors[0];
-    if (injected) {
-      connect({ connector: injected });
-    }
+    if (injected) connect({ connector: injected });
   }
 
-  if (!isConnected && !loading) {
+  if (!isConnected) {
     return (
       <div className="flex items-center gap-2">
         <button
@@ -47,15 +41,6 @@ export function WalletButton() {
         {connectError && (
           <span className="text-red-400 text-xs font-degular-medium">{connectError}</span>
         )}
-      </div>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[#805abe]/30 bg-[#805abe]/10 text-[#805abe] text-sm font-degular-medium">
-        <div className="size-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-        Connecting...
       </div>
     );
   }
