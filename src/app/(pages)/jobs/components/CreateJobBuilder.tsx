@@ -645,7 +645,7 @@ export default function CreateJobBuilder({ open, onClose }: Props) {
                         <Copy className="size-3.5" />
                       </button>
                       <a
-                        href={`https://gateway.pinata.cloud/ipfs/${pinnedCID}`}
+                        href={`https://ipfs.io/ipfs/${pinnedCID}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-text/40 hover:text-[#805abe] transition-colors"

@@ -225,7 +225,7 @@ const contractBase = {
 // ─── IPFS gateway helper ──────────────────────────────────────────────────────
 
 function ipfsToHttp(uri: string): string {
-  if (uri.startsWith('ipfs://')) return `https://dweb.link/ipfs/${uri.slice(7)}`;
+  if (uri.startsWith('ipfs://')) return `https://ipfs.io/ipfs/${uri.slice(7)}`;
   return uri;
 }
 
@@ -2245,16 +2245,19 @@ export default function JobsDApp() {
                       const imageURI = completionMeta?.properties?.finalImageURI ?? completionMeta?.image;
                       const rows: { name: string; href: string; ext: string; description?: string }[] = [];
 
+                      const getExt = (name: string, href: string) => {
+                        // Use filename (not description), split on '.', take last part, strip spaces/parens, cap 4 chars
+                        const raw = (name || href).split('.').pop()?.split(/[\s(?]/)[0]?.toUpperCase() ?? 'FILE';
+                        return raw.slice(0, 4);
+                      };
                       if (structured && structured.length > 0) {
                         for (const d of structured) {
                           const href = d.gatewayURI ?? (d.uri ? ipfsToHttp(d.uri) : '');
-                          const ext = (d.name ?? href).split('.').pop()?.split('?')[0]?.toUpperCase() ?? 'FILE';
-                          rows.push({ name: d.name, href, ext, description: d.description });
+                          rows.push({ name: d.name, href, ext: getExt(d.name, href), description: d.description });
                         }
                       } else if (imageURI) {
                         const href = imageURI.startsWith('ipfs://') ? ipfsToHttp(imageURI) : imageURI;
-                        const ext = href.split('.').pop()?.split('?')[0]?.toUpperCase() ?? 'FILE';
-                        rows.push({ name: completionMeta?.name ?? 'Deliverable', href, ext });
+                        rows.push({ name: completionMeta?.name ?? 'Deliverable', href, ext: getExt('', href) });
                       }
 
                       return rows.length > 0 ? (

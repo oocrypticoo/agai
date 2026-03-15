@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 const PINATA_JWT = process.env.PINATA_JWT ?? '';
-const PINATA_GATEWAY = process.env.PINATA_GATEWAY ?? 'https://gateway.pinata.cloud';
+const IPFS_GATEWAY = 'https://ipfs.io';
 
 export async function POST(req: NextRequest) {
   if (!PINATA_JWT) {
@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       uri: `ipfs://${data.IpfsHash}`,
       cid: data.IpfsHash,
-      gateway: `${PINATA_GATEWAY}/ipfs/${data.IpfsHash}`,
+      gateway: `${IPFS_GATEWAY}/ipfs/${data.IpfsHash}`,
     });
   } catch (err) {
     return NextResponse.json(

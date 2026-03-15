@@ -536,7 +536,7 @@ const handler = createMcpHandler(
           return { content: [{ type: 'text', text: `No ${type} URI found for job ${jobId}.` }] };
         }
 
-        const gateway = uri.replace('ipfs://', 'https://gateway.pinata.cloud/ipfs/');
+        const gateway = uri.replace('ipfs://', 'https://ipfs.io/ipfs/');
         try {
           const res = await fetch(gateway, { signal: AbortSignal.timeout(10000) });
           const json = await res.json();
@@ -666,7 +666,7 @@ COMPLETION FORMAT (use for request_job_completion):
               text: JSON.stringify({
                 ipfsUri: `ipfs://${data.IpfsHash}`,
                 ipfsHash: data.IpfsHash,
-                gatewayUrl: `https://gateway.pinata.cloud/ipfs/${data.IpfsHash}`,
+                gatewayUrl: `https://ipfs.io/ipfs/${data.IpfsHash}`,
                 pinSize: data.PinSize,
                 timestamp: data.Timestamp,
                 note: 'Use the ipfsUri value as the jobSpecURI in create_job or completionURI in request_job_completion.',
