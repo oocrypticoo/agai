@@ -7,7 +7,7 @@ import {
   ChevronDown, ChevronUp, Wallet, Globe, FileCheck, AtSign, ArrowRightLeft,
   Loader2, Send, Ban, Timer, Gavel, ThumbsUp, ThumbsDown, Flag, Users, Bot,
 } from 'lucide-react';
-import { useAccount, useConnect, useSignMessage, useEnsName, usePublicClient, useReadContract, useReadContracts, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { useAccount, useConnect, useSignMessage, useEnsName, usePublicClient, useReadContract, useReadContracts, useWriteContract, useWaitForTransactionReceipt, useSimulateContract } from 'wagmi';
 import { formatUnits, keccak256, toBytes } from 'viem';
 import { mainnet } from 'wagmi/chains';
 import Footer from '@/app/sections/Footer';
@@ -676,6 +676,28 @@ export default function JobsDApp() {
     query: { enabled: !!address, refetchInterval: 30000 },
   });
 
+  // ── Simulate validateJob/disapproveJob to detect if already voted ────────
+  // Uses eth_call against current chain state — no archive access needed.
+  // Reverts with e.g. "AlreadyVoted" if the connected address has already voted.
+  const validateSimEnabled = !!address && !!ensClub &&
+    selectedJob?.status === 'In Review';
+  const validateSimArgs = validateSimEnabled
+    ? [BigInt(selectedJob!.id), extractSubdomainLabel(ensClub!), [] as readonly `0x${string}`[]] as const
+    : undefined;
+
+  // Simulate validateJob — reverts with InvalidState() if address already voted
+  // (contract checks approvals[msg.sender] || disapprovals[msg.sender] before executing)
+  const { error: validateSimError } = useSimulateContract({
+    address: CONTRACTS.AGI_JOB_MANAGER,
+    abi: agiJobManagerAbi,
+    functionName: 'validateJob',
+    args: validateSimArgs,
+    account: address,
+    query: { enabled: validateSimEnabled && !!validateSimArgs, retry: false },
+  });
+
+  const alreadyVoted = !!validateSimError;
+
   // (Write hooks for approve/createJob moved to CreateJobBuilder component)
 
   // ── Token approval write hook (for agent/validator bonds) ─────────────
@@ -846,10 +868,8 @@ export default function JobsDApp() {
         const requiredBond = validatorBondFor(selectedJob.payout);
         const balance = tokenBalance as bigint | undefined;
         const bondDisplay = formatUnits(requiredBond, 18);
-        const alreadyVoted = !!address && validators.some(v => v.address.toLowerCase() === address.toLowerCase());
-
         actions.push({
-          label: alreadyVoted ? 'Approved ✓' : 'Approve',
+          label: alreadyVoted ? 'Already Voted' : 'Approve',
           disabled: alreadyVoted,
           icon: ThumbsUp,
           colorClass: actionColorMap.emerald,
@@ -874,7 +894,7 @@ export default function JobsDApp() {
           },
         });
         actions.push({
-          label: alreadyVoted ? 'Disapprove' : 'Disapprove',
+          label: 'Disapprove',
           disabled: alreadyVoted,
           icon: ThumbsDown,
           colorClass: actionColorMap.red,
@@ -1473,8 +1493,6 @@ export default function JobsDApp() {
                           const bal = tokenBalance as bigint | undefined;
                           const bondStr = formatUnits(rBond, 18);
                           const balStr = bal ? formatUnits(bal, 18) : '0';
-                          const rowAlreadyVoted = !!addr && job.id === selectedJob?.id &&
-                            validators.some(v => v.address.toLowerCase() === addr);
                           const checkBond = () => {
                             if (!bal || bal < rBond) {
                               setActionError(`Insufficient balance for validator bond. Need ${bondStr} AGIALPHA, have ${balStr}`);
@@ -1482,32 +1500,28 @@ export default function JobsDApp() {
                             }
                             return true;
                           };
-                          if (!rowAlreadyVoted) {
-                            btns.push(btn('Approve', 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20', () => {
-                              setActionError(null);
-                              if (!checkBond()) return;
-                              const allowance = tokenAllowance as bigint | undefined;
-                              const needsApproval = !allowance || allowance === BigInt(0);
-                              if (needsApproval) {
-                                approveToken({ address: CONTRACTS.AGIALPHA_OFFICIAL, abi: erc20Abi, functionName: 'approve', args: [CONTRACTS.AGI_JOB_MANAGER, BigInt('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')] });
-                              } else {
-                                executeJobAction({ address: CONTRACTS.AGI_JOB_MANAGER, abi: agiJobManagerAbi, functionName: 'validateJob', args: [jobId, extractSubdomainLabel(ensClub!), [] as readonly `0x${string}`[]] });
-                              }
-                            }));
-                            btns.push(btn('Disapprove', 'bg-red-500/10 border-red-500/20 text-red-400 hover:bg-red-500/20', () => {
-                              setActionError(null);
-                              if (!checkBond()) return;
-                              const allowance = tokenAllowance as bigint | undefined;
-                              const needsApproval = !allowance || allowance === BigInt(0);
-                              if (needsApproval) {
-                                approveToken({ address: CONTRACTS.AGIALPHA_OFFICIAL, abi: erc20Abi, functionName: 'approve', args: [CONTRACTS.AGI_JOB_MANAGER, BigInt('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')] });
-                              } else {
-                                executeJobAction({ address: CONTRACTS.AGI_JOB_MANAGER, abi: agiJobManagerAbi, functionName: 'disapproveJob', args: [jobId, extractSubdomainLabel(ensClub!), [] as readonly `0x${string}`[]] });
-                              }
-                            }));
-                          } else {
-                            btns.push(<span key="voted" className="px-2 py-0.5 rounded-md border border-emerald-500/20 text-xs text-emerald-400/60 font-degular-medium">Voted ✓</span>);
-                          }
+                          btns.push(btn('Approve', 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20', () => {
+                            setActionError(null);
+                            if (!checkBond()) return;
+                            const allowance = tokenAllowance as bigint | undefined;
+                            const needsApproval = !allowance || allowance === BigInt(0);
+                            if (needsApproval) {
+                              approveToken({ address: CONTRACTS.AGIALPHA_OFFICIAL, abi: erc20Abi, functionName: 'approve', args: [CONTRACTS.AGI_JOB_MANAGER, BigInt('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')] });
+                            } else {
+                              executeJobAction({ address: CONTRACTS.AGI_JOB_MANAGER, abi: agiJobManagerAbi, functionName: 'validateJob', args: [jobId, extractSubdomainLabel(ensClub!), [] as readonly `0x${string}`[]] });
+                            }
+                          }));
+                          btns.push(btn('Disapprove', 'bg-red-500/10 border-red-500/20 text-red-400 hover:bg-red-500/20', () => {
+                            setActionError(null);
+                            if (!checkBond()) return;
+                            const allowance = tokenAllowance as bigint | undefined;
+                            const needsApproval = !allowance || allowance === BigInt(0);
+                            if (needsApproval) {
+                              approveToken({ address: CONTRACTS.AGIALPHA_OFFICIAL, abi: erc20Abi, functionName: 'approve', args: [CONTRACTS.AGI_JOB_MANAGER, BigInt('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')] });
+                            } else {
+                              executeJobAction({ address: CONTRACTS.AGI_JOB_MANAGER, abi: agiJobManagerAbi, functionName: 'disapproveJob', args: [jobId, extractSubdomainLabel(ensClub!), [] as readonly `0x${string}`[]] });
+                            }
+                          }));
                         }
                         if (isEmp) btns.push(btn('Dispute', 'bg-amber-500/10 border-amber-500/20 text-amber-400 hover:bg-amber-500/20', () => {
                           setActionError(null);
