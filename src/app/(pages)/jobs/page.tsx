@@ -2252,7 +2252,7 @@ export default function JobsDApp() {
                       };
                       if (structured && structured.length > 0) {
                         for (const d of structured) {
-                          const href = d.gatewayURI ?? (d.uri ? ipfsToHttp(d.uri) : '');
+                          const href = d.uri ? ipfsToHttp(d.uri) : (d.gatewayURI ?? '');
                           rows.push({ name: d.name, href, ext: getExt(d.name, href), description: d.description });
                         }
                       } else if (imageURI) {
