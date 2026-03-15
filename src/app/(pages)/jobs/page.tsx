@@ -276,6 +276,11 @@ export default function JobsDApp() {
   const [validators, setValidators] = useState<{ address: string; type: 'approved' | 'disapproved' }[]>([]);
   const [validatorsLoading, setValidatorsLoading] = useState(false);
 
+  // Completion metadata for file explorer
+  interface CompletionDeliverable { name: string; uri: string; gatewayURI?: string; description?: string; }
+  interface CompletionMeta { image?: string; finalDeliverables?: CompletionDeliverable[]; completionStatus?: string; submissionType?: string; }
+  const [completionMeta, setCompletionMeta] = useState<CompletionMeta | null>(null);
+
   // (Create Job form state moved to CreateJobBuilder component)
 
   const { validators: validatorCount, agents: agentCount } = useEnsCounts();
@@ -615,6 +620,18 @@ export default function JobsDApp() {
     fetchValidators();
     return () => { cancelled = true; };
   }, [selectedJob, publicClient]);
+
+  // Fetch completion metadata for file explorer
+  useEffect(() => {
+    const uri = selectedJob?.completionURI;
+    if (!uri) { setCompletionMeta(null); return; }
+    let cancelled = false;
+    fetch(ipfsToHttp(uri))
+      .then(r => r.json())
+      .then(json => { if (!cancelled) setCompletionMeta(json); })
+      .catch(() => { if (!cancelled) setCompletionMeta(null); });
+    return () => { cancelled = true; };
+  }, [selectedJob?.completionURI]);
 
   // Protocol parameters (single multicall) — using verified function names
   const { data: protocolRaw } = useReadContracts({
@@ -972,10 +989,11 @@ export default function JobsDApp() {
     }
 
     return actions;
-  }, [selectedJob, address, isConnected, userRole, ensAgent, ensClub, completionURIInput, executeJobAction]);
+  }, [selectedJob, address, isConnected, userRole, ensAgent, ensClub, completionURIInput, executeJobAction, alreadyVoted, tokenBalance, tokenAllowance]);
 
-  // Reset action state when selected job changes
+  // Reset action + completion meta when selected job changes
   useEffect(() => {
+    setCompletionMeta(null);
     setCompletionURIInput('');
     setActionError(null);
     setPendingApplyJobId(null);
@@ -2195,6 +2213,43 @@ export default function JobsDApp() {
                     <ExternalLink className="size-3" />Etherscan
                   </a>
                 </div>
+
+                {/* ── Deliverables file explorer ── */}
+                {completionMeta?.finalDeliverables && completionMeta.finalDeliverables.length > 0 && (
+                  <div className="border-t border-black/5 dark:border-white/5 pt-4">
+                    <p className="text-[10px] font-degular-medium text-text/40 uppercase tracking-wider mb-2">Deliverables</p>
+                    <div className="rounded-xl border border-black/5 dark:border-white/5 overflow-hidden">
+                      {completionMeta.finalDeliverables.map((d, i) => {
+                        const href = d.gatewayURI ?? (d.uri ? ipfsToHttp(d.uri) : null);
+                        const ext = href?.split('.').pop()?.split('?')[0]?.toUpperCase() ?? '';
+                        return (
+                          <div
+                            key={i}
+                            className={`flex items-center gap-3 px-3 py-2.5 ${i > 0 ? 'border-t border-black/5 dark:border-white/5' : ''} hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors`}
+                          >
+                            <div className="size-7 rounded-lg bg-[#805abe]/10 border border-[#805abe]/20 flex items-center justify-center shrink-0">
+                              <span className="text-[8px] font-mono font-bold text-[#805abe]">{ext || 'FILE'}</span>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-degular-medium text-heading truncate">{d.name}</p>
+                              {d.description && <p className="text-[10px] text-text/40 font-degular truncate">{d.description}</p>}
+                            </div>
+                            {href && (
+                              <a
+                                href={href}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="shrink-0 p-1.5 rounded-lg border border-black/5 dark:border-white/5 text-text/40 hover:text-[#805abe] hover:border-[#805abe]/30 transition-all"
+                              >
+                                <ExternalLink className="size-3" />
+                              </a>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* ── Action Footer ── */}
