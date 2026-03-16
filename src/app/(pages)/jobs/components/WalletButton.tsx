@@ -23,11 +23,11 @@ export function WalletButton() {
 
   function handleConnect() {
     setConnectError('');
-    // Prefer MetaMask via EIP-6963 (avoids Leap/Cosmos wallets that hijack window.ethereum)
-    const w = typeof window !== 'undefined' ? (window as unknown as { ethereum?: { isMetaMask?: boolean } }) : null;
+    // Prefer EIP-6963 MetaMask (io.metamask) — uses a direct provider reference
+    // that bypasses window.ethereum proxy chains from Cosmos wallet extensions.
+    // Falls back to any injected provider, then first available connector.
     const connector =
       connectors.find(c => c.id === 'io.metamask') ??
-      connectors.find(c => c.type === 'injected' && w?.ethereum?.isMetaMask) ??
       connectors.find(c => c.type === 'injected') ??
       connectors[0];
     if (connector) connect({ connector });
