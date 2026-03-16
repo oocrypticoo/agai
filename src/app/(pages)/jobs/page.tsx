@@ -1031,8 +1031,8 @@ export default function JobsDApp() {
           },
         });
       }
-      // Challenge period: 86400s (24h) after completion requested
-      const CHALLENGE_PERIOD = 86400;
+      // Review period from contract (default 604800 = 7d if not yet loaded)
+      const CHALLENGE_PERIOD = Number(pp?.reviewPeriod ?? 604800);
       const completionAt = Number(selectedJob.completionRequestedAt);
       const finalizeAt = completionAt + CHALLENGE_PERIOD;
       const canFinalizeNow = completionAt > 0 && nowSec >= finalizeAt;
@@ -1082,7 +1082,7 @@ export default function JobsDApp() {
     }
 
     return actions;
-  }, [selectedJob, address, isConnected, userRole, ensAgent, ensClub, completionURIInput, executeJobAction, alreadyVoted, tokenBalance, tokenAllowance, votedJobIds, setVotedJobIds, nowSec]);
+  }, [selectedJob, address, isConnected, userRole, ensAgent, ensClub, completionURIInput, executeJobAction, alreadyVoted, tokenBalance, tokenAllowance, votedJobIds, setVotedJobIds, nowSec, pp]);
 
   // Reset action + completion meta when selected job changes
   useEffect(() => {
@@ -1660,7 +1660,7 @@ export default function JobsDApp() {
                           }
                         }
                         {
-                          const CP = 86400;
+                          const CP = Number(pp?.reviewPeriod ?? 604800);
                           const cAt = Number(job.completionRequestedAt);
                           const fAt = cAt + CP;
                           const ready = cAt > 0 && nowSec >= fAt;
