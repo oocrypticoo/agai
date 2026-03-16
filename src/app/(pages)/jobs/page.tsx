@@ -154,6 +154,18 @@ function formatDuration(seconds: bigint): string {
   return `${s}s`;
 }
 
+function formatCountdown(secondsLeft: number): string {
+  if (secondsLeft <= 0) return '0s';
+  const d = Math.floor(secondsLeft / 86400);
+  const h = Math.floor((secondsLeft % 86400) / 3600);
+  const m = Math.floor((secondsLeft % 3600) / 60);
+  const s = secondsLeft % 60;
+  if (d > 0) return `${d}d ${h}h`;
+  if (h > 0) return `${h}h ${m}m`;
+  if (m > 0) return `${m}m ${s}s`;
+  return `${s}s`;
+}
+
 const statusColors: Record<JobStatusLabel, string> = {
   Open: 'text-blue-400 bg-blue-400/10 border-blue-400/20',
   Assigned: 'text-amber-400 bg-amber-400/10 border-amber-400/20',
@@ -269,6 +281,11 @@ export default function JobsDApp() {
   const [statusFilter, setStatusFilter] = useState<JobStatusLabel | 'All'>('All');
   const [calcPayout, setCalcPayout] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [nowSec, setNowSec] = useState(() => Math.floor(Date.now() / 1000));
+  useEffect(() => {
+    const t = setInterval(() => setNowSec(Math.floor(Date.now() / 1000)), 1000);
+    return () => clearInterval(t);
+  }, []);
 
   // Job action state
   const [completionURIInput, setCompletionURIInput] = useState('');
@@ -1014,13 +1031,25 @@ export default function JobsDApp() {
           },
         });
       }
-      if (userRole.isEmployer) {
+      // Challenge period: 86400s (24h) after completion requested
+      const CHALLENGE_PERIOD = 86400;
+      const completionAt = Number(selectedJob.completionRequestedAt);
+      const finalizeAt = completionAt + CHALLENGE_PERIOD;
+      const canFinalizeNow = completionAt > 0 && nowSec >= finalizeAt;
+      const timeLeft = finalizeAt - nowSec;
+      const countdown = formatCountdown(Math.max(0, timeLeft));
+      if (userRole.isEmployer || userRole.isAssignedAgent) {
         actions.push({
-          label: 'Dispute',
+          label: canFinalizeNow ? 'Dispute' : `Dispute (${countdown})`,
+          disabled: !canFinalizeNow,
           icon: Flag,
           colorClass: actionColorMap.amber,
           execute: () => {
             setActionError(null);
+            if (!canFinalizeNow) {
+              setActionError(`Cannot dispute yet. Review period ends in ${countdown}`);
+              return;
+            }
             executeJobAction({
               address: CONTRACTS.AGI_JOB_MANAGER,
               abi: agiJobManagerAbi,
@@ -1030,24 +1059,16 @@ export default function JobsDApp() {
           },
         });
       }
-      // Challenge period: 86400s (24h) after completion requested
-      const CHALLENGE_PERIOD = 86400;
-      const completionAt = Number(selectedJob.completionRequestedAt);
-      const nowSec = Math.floor(Date.now() / 1000);
-      const finalizeAt = completionAt + CHALLENGE_PERIOD;
-      const canFinalizeNow = completionAt > 0 && nowSec >= finalizeAt;
-      const timeLeft = finalizeAt - nowSec;
-      const hoursLeft = Math.ceil(timeLeft / 3600);
 
       actions.push({
-        label: canFinalizeNow ? 'Finalize' : `Finalize (${hoursLeft}h)`,
+        label: canFinalizeNow ? 'Finalize' : `Finalize (${countdown})`,
         icon: Gavel,
         colorClass: actionColorMap.cyan,
         execute: () => {
           setActionError(null);
           if (!canFinalizeNow) {
             const readyDate = new Date(finalizeAt * 1000);
-            setActionError(`Cannot finalize yet. Challenge period ends ${readyDate.toLocaleString()} (~${hoursLeft}h remaining)`);
+            setActionError(`Cannot finalize yet. Challenge period ends ${readyDate.toLocaleString()} (${countdown} remaining)`);
             return;
           }
           executeJobAction({
@@ -1061,7 +1082,7 @@ export default function JobsDApp() {
     }
 
     return actions;
-  }, [selectedJob, address, isConnected, userRole, ensAgent, ensClub, completionURIInput, executeJobAction, alreadyVoted, tokenBalance, tokenAllowance, votedJobIds, setVotedJobIds]);
+  }, [selectedJob, address, isConnected, userRole, ensAgent, ensClub, completionURIInput, executeJobAction, alreadyVoted, tokenBalance, tokenAllowance, votedJobIds, setVotedJobIds, nowSec]);
 
   // Reset action + completion meta when selected job changes
   useEffect(() => {
@@ -1638,21 +1659,26 @@ export default function JobsDApp() {
                           }));
                           }
                         }
-                        if (isEmp) btns.push(btn('Dispute', 'bg-amber-500/10 border-amber-500/20 text-amber-400 hover:bg-amber-500/20', () => {
-                          setActionError(null);
-                          executeJobAction({ address: CONTRACTS.AGI_JOB_MANAGER, abi: agiJobManagerAbi, functionName: 'disputeJob', args: [jobId] });
-                        }));
                         {
                           const CP = 86400;
                           const cAt = Number(job.completionRequestedAt);
-                          const nw = Math.floor(Date.now() / 1000);
                           const fAt = cAt + CP;
-                          const ready = cAt > 0 && nw >= fAt;
-                          const hLeft = Math.ceil((fAt - nw) / 3600);
-                          btns.push(btn(ready ? 'Finalize' : `Finalize (${hLeft}h)`, 'bg-cyan-500/10 border-cyan-500/20 text-cyan-400 hover:bg-cyan-500/20', () => {
+                          const ready = cAt > 0 && nowSec >= fAt;
+                          const countdown = formatCountdown(Math.max(0, fAt - nowSec));
+                          if (isEmp || isAgent) {
+                            if (ready) {
+                              btns.push(btn('Dispute', 'bg-amber-500/10 border-amber-500/20 text-amber-400 hover:bg-amber-500/20', () => {
+                                setActionError(null);
+                                executeJobAction({ address: CONTRACTS.AGI_JOB_MANAGER, abi: agiJobManagerAbi, functionName: 'disputeJob', args: [jobId] });
+                              }));
+                            } else {
+                              btns.push(<span key="dispute-pending" className="px-2 py-0.5 rounded-md border border-amber-500/20 bg-amber-500/10 text-amber-400/50 text-xs font-degular-medium cursor-default">Dispute ({countdown})</span>);
+                            }
+                          }
+                          btns.push(btn(ready ? 'Finalize' : `Finalize (${countdown})`, 'bg-cyan-500/10 border-cyan-500/20 text-cyan-400 hover:bg-cyan-500/20', () => {
                             setActionError(null);
                             if (!ready) {
-                              setActionError(`Cannot finalize yet. Challenge period ends ${new Date(fAt * 1000).toLocaleString()} (~${hLeft}h remaining)`);
+                              setActionError(`Cannot finalize yet. Challenge period ends ${new Date(fAt * 1000).toLocaleString()} (${countdown} remaining)`);
                               return;
                             }
                             executeJobAction({ address: CONTRACTS.AGI_JOB_MANAGER, abi: agiJobManagerAbi, functionName: 'finalizeJob', args: [jobId] });
