@@ -16,7 +16,12 @@ function clearLeapConflict() {
     const isCosmosWallet = eth?.isLeap || eth?.isKeplr;
     const isFakingMetaMask = eth?.isMetaMask && !eth?._metamask;
     if (isCosmosWallet || isFakingMetaMask) {
+      // wagmi prefixes all storage keys with 'wagmi.' (see createStorage.js)
+      // 'wagmi.injected.connected' is the critical one: if set, isAuthorized() calls
+      // window.ethereum.request() which routes through Leap's proxy → stack overflow.
       localStorage.removeItem('wagmi.store');
+      localStorage.removeItem('wagmi.injected.connected');
+      localStorage.removeItem('wagmi.recentConnectorId');
     }
   } catch { /* storage unavailable */ }
 }
