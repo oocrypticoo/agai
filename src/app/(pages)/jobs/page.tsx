@@ -288,8 +288,9 @@ export default function JobsDApp() {
   }
   const [completionMeta, setCompletionMeta] = useState<CompletionMeta | null>(null);
   const [completionMetaLoading, setCompletionMetaLoading] = useState(false);
-  // Track locally so button updates immediately after vote tx confirms (no simulation cache lag)
-  const [hasVotedJobId, setHasVotedJobId] = useState<number | null>(null);
+  // Track voted job IDs so Already Voted shows in the table without needing re-selection.
+  // Populated both when voting this session and when simulation confirms prior vote.
+  const [votedJobIds, setVotedJobIds] = useState<Set<number>>(new Set());
 
   // (Create Job form state moved to CreateJobBuilder component)
 
@@ -734,7 +735,15 @@ export default function JobsDApp() {
     ? validatorBondFor(selectedJob.payout)
     : BigInt(0);
   const hasSufficientBond = !!(tokenBalance && (tokenBalance as bigint) >= validatorBondRequired);
-  const alreadyVoted = (hasVotedJobId === selectedJob?.id) || (!!validateSimError && hasSufficientBond);
+  const alreadyVoted = (selectedJob ? votedJobIds.has(selectedJob.id) : false) || (!!validateSimError && hasSufficientBond);
+
+  // When simulation confirms already voted for selected job, persist in the Set
+  // so the table row shows Already Voted without needing to re-select the job.
+  useEffect(() => {
+    if (validateSimError && hasSufficientBond && selectedJob) {
+      setVotedJobIds(prev => { const s = new Set(prev); s.add(selectedJob.id); return s; });
+    }
+  }, [validateSimError, hasSufficientBond, selectedJob?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // (Write hooks for approve/createJob moved to CreateJobBuilder component)
 
@@ -927,7 +936,7 @@ export default function JobsDApp() {
             if (needsApproval) {
               approveToken({ address: CONTRACTS.AGIALPHA_OFFICIAL, abi: erc20Abi, functionName: 'approve', args: [CONTRACTS.AGI_JOB_MANAGER, BigInt('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')] });
             } else {
-              setHasVotedJobId(selectedJob.id);
+              setVotedJobIds(prev => { const s = new Set(prev); s.add(selectedJob.id); return s; });
               executeJobAction({
                 address: CONTRACTS.AGI_JOB_MANAGER,
                 abi: agiJobManagerAbi,
@@ -953,7 +962,7 @@ export default function JobsDApp() {
             if (needsApproval) {
               approveToken({ address: CONTRACTS.AGIALPHA_OFFICIAL, abi: erc20Abi, functionName: 'approve', args: [CONTRACTS.AGI_JOB_MANAGER, BigInt('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')] });
             } else {
-              setHasVotedJobId(selectedJob.id);
+              setVotedJobIds(prev => { const s = new Set(prev); s.add(selectedJob.id); return s; });
               executeJobAction({
                 address: CONTRACTS.AGI_JOB_MANAGER,
                 abi: agiJobManagerAbi,
@@ -1011,7 +1020,7 @@ export default function JobsDApp() {
     }
 
     return actions;
-  }, [selectedJob, address, isConnected, userRole, ensAgent, ensClub, completionURIInput, executeJobAction, alreadyVoted, tokenBalance, tokenAllowance, hasVotedJobId, setHasVotedJobId]);
+  }, [selectedJob, address, isConnected, userRole, ensAgent, ensClub, completionURIInput, executeJobAction, alreadyVoted, tokenBalance, tokenAllowance, votedJobIds, setVotedJobIds]);
 
   // Reset action + completion meta when selected job changes
   useEffect(() => {
@@ -1547,7 +1556,7 @@ export default function JobsDApp() {
                             }
                             return true;
                           };
-                          const rowAlreadyVoted = hasVotedJobId === job.id || (job.id === selectedJob?.id && alreadyVoted);
+                          const rowAlreadyVoted = votedJobIds.has(job.id);
                           if (rowAlreadyVoted) {
                             btns.push(<span key="voted" className="px-2 py-0.5 rounded-md border border-zinc-500/20 bg-zinc-500/10 text-zinc-400 text-xs font-degular-medium">Already Voted</span>);
                           } else {
@@ -1559,7 +1568,7 @@ export default function JobsDApp() {
                             if (needsApproval) {
                               approveToken({ address: CONTRACTS.AGIALPHA_OFFICIAL, abi: erc20Abi, functionName: 'approve', args: [CONTRACTS.AGI_JOB_MANAGER, BigInt('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')] });
                             } else {
-                              setHasVotedJobId(job.id);
+                              setVotedJobIds(prev => { const s = new Set(prev); s.add(job.id); return s; });
                               executeJobAction({ address: CONTRACTS.AGI_JOB_MANAGER, abi: agiJobManagerAbi, functionName: 'validateJob', args: [jobId, extractSubdomainLabel(ensClub!), [] as readonly `0x${string}`[]] });
                             }
                           }));
@@ -1571,7 +1580,7 @@ export default function JobsDApp() {
                             if (needsApproval) {
                               approveToken({ address: CONTRACTS.AGIALPHA_OFFICIAL, abi: erc20Abi, functionName: 'approve', args: [CONTRACTS.AGI_JOB_MANAGER, BigInt('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')] });
                             } else {
-                              setHasVotedJobId(job.id);
+                              setVotedJobIds(prev => { const s = new Set(prev); s.add(job.id); return s; });
                               executeJobAction({ address: CONTRACTS.AGI_JOB_MANAGER, abi: agiJobManagerAbi, functionName: 'disapproveJob', args: [jobId, extractSubdomainLabel(ensClub!), [] as readonly `0x${string}`[]] });
                             }
                           }));
