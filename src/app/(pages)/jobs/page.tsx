@@ -1032,24 +1032,22 @@ export default function JobsDApp() {
         });
       }
       // Review period from contract (default 604800 = 7d if not yet loaded)
-      const CHALLENGE_PERIOD = Number(pp?.reviewPeriod ?? 604800);
+      const reviewPeriodRaw = protocolRaw?.[3];
+      const CHALLENGE_PERIOD = reviewPeriodRaw?.status === 'success' ? Number(reviewPeriodRaw.result as bigint) : 604800;
       const completionAt = Number(selectedJob.completionRequestedAt);
       const finalizeAt = completionAt + CHALLENGE_PERIOD;
       const canFinalizeNow = completionAt > 0 && nowSec >= finalizeAt;
       const timeLeft = finalizeAt - nowSec;
       const countdown = formatCountdown(Math.max(0, timeLeft));
+
+      // Dispute: no timing gate — callable any time during In Review by employer or agent
       if (userRole.isEmployer || userRole.isAssignedAgent) {
         actions.push({
-          label: canFinalizeNow ? 'Dispute' : `Dispute (${countdown})`,
-          disabled: !canFinalizeNow,
+          label: 'Dispute',
           icon: Flag,
           colorClass: actionColorMap.amber,
           execute: () => {
             setActionError(null);
-            if (!canFinalizeNow) {
-              setActionError(`Cannot dispute yet. Review period ends in ${countdown}`);
-              return;
-            }
             executeJobAction({
               address: CONTRACTS.AGI_JOB_MANAGER,
               abi: agiJobManagerAbi,
@@ -1068,7 +1066,7 @@ export default function JobsDApp() {
           setActionError(null);
           if (!canFinalizeNow) {
             const readyDate = new Date(finalizeAt * 1000);
-            setActionError(`Cannot finalize yet. Challenge period ends ${readyDate.toLocaleString()} (${countdown} remaining)`);
+            setActionError(`Cannot finalize yet. Review period ends ${readyDate.toLocaleString()} (${countdown} remaining)`);
             return;
           }
           executeJobAction({
@@ -1082,7 +1080,7 @@ export default function JobsDApp() {
     }
 
     return actions;
-  }, [selectedJob, address, isConnected, userRole, ensAgent, ensClub, completionURIInput, executeJobAction, alreadyVoted, tokenBalance, tokenAllowance, votedJobIds, setVotedJobIds, nowSec, pp]);
+  }, [selectedJob, address, isConnected, userRole, ensAgent, ensClub, completionURIInput, executeJobAction, alreadyVoted, tokenBalance, tokenAllowance, votedJobIds, setVotedJobIds, nowSec, protocolRaw]);
 
   // Reset action + completion meta when selected job changes
   useEffect(() => {
@@ -1666,14 +1664,10 @@ export default function JobsDApp() {
                           const ready = cAt > 0 && nowSec >= fAt;
                           const countdown = formatCountdown(Math.max(0, fAt - nowSec));
                           if (isEmp || isAgent) {
-                            if (ready) {
-                              btns.push(btn('Dispute', 'bg-amber-500/10 border-amber-500/20 text-amber-400 hover:bg-amber-500/20', () => {
-                                setActionError(null);
-                                executeJobAction({ address: CONTRACTS.AGI_JOB_MANAGER, abi: agiJobManagerAbi, functionName: 'disputeJob', args: [jobId] });
-                              }));
-                            } else {
-                              btns.push(<span key="dispute-pending" className="px-2 py-0.5 rounded-md border border-amber-500/20 bg-amber-500/10 text-amber-400/50 text-xs font-degular-medium cursor-default">Dispute ({countdown})</span>);
-                            }
+                            btns.push(btn('Dispute', 'bg-amber-500/10 border-amber-500/20 text-amber-400 hover:bg-amber-500/20', () => {
+                              setActionError(null);
+                              executeJobAction({ address: CONTRACTS.AGI_JOB_MANAGER, abi: agiJobManagerAbi, functionName: 'disputeJob', args: [jobId] });
+                            }));
                           }
                           btns.push(btn(ready ? 'Finalize' : `Finalize (${countdown})`, 'bg-cyan-500/10 border-cyan-500/20 text-cyan-400 hover:bg-cyan-500/20', () => {
                             setActionError(null);
