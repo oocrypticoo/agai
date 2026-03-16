@@ -933,6 +933,27 @@ export default function JobsDApp() {
           },
         });
       }
+      {
+        const expAt = Number(selectedJob.assignedAt) + Number(selectedJob.duration);
+        const nowSec = Math.floor(Date.now() / 1000);
+        const canExpireNow = Number(selectedJob.assignedAt) > 0 && nowSec >= expAt;
+        if (canExpireNow) {
+          actions.push({
+            label: 'Expire',
+            icon: Timer,
+            colorClass: actionColorMap.zinc,
+            execute: () => {
+              setActionError(null);
+              executeJobAction({
+                address: CONTRACTS.AGI_JOB_MANAGER,
+                abi: agiJobManagerAbi,
+                functionName: 'expireJob',
+                args: [jobId],
+              });
+            },
+          });
+        }
+      }
     }
 
     if (selectedJob.status === 'In Review') {
@@ -1037,21 +1058,6 @@ export default function JobsDApp() {
           });
         },
       });
-      // Expire: callable by anyone after challenge period (contract has no caller restriction)
-      {
-        const secsLeft = finalizeAt - nowSec;
-        const expLabel = canFinalizeNow ? 'Expire' : `Expire (${secsLeft > 86400 ? `${Math.ceil(secsLeft / 86400)}d` : secsLeft > 3600 ? `${Math.ceil(secsLeft / 3600)}h` : `${Math.ceil(secsLeft / 60)}m`})`;
-        actions.push({
-          label: expLabel,
-          icon: Timer,
-          colorClass: actionColorMap.zinc,
-          disabled: !canFinalizeNow,
-          execute: () => {
-            setActionError(null);
-            executeJobAction({ address: CONTRACTS.AGI_JOB_MANAGER, abi: agiJobManagerAbi, functionName: 'expireJob', args: [jobId] });
-          },
-        });
-      }
     }
 
     return actions;
@@ -1569,9 +1575,26 @@ export default function JobsDApp() {
                           executeJobAction({ address: CONTRACTS.AGI_JOB_MANAGER, abi: agiJobManagerAbi, functionName: 'cancelJob', args: [jobId] });
                         }));
                       }
-                      if (job.status === 'Assigned' && isAgent) btns.push(btn('Complete', 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20', () => {
-                        setSelectedJob(job); setJobSpec(job.specMeta ?? null);
-                      }));
+                      if (job.status === 'Assigned') {
+                        if (isAgent) btns.push(btn('Complete', 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20', () => {
+                          setSelectedJob(job); setJobSpec(job.specMeta ?? null);
+                        }));
+                        {
+                          const expAt = Number(job.assignedAt) + Number(job.duration);
+                          const nw = Math.floor(Date.now() / 1000);
+                          const ready = Number(job.assignedAt) > 0 && nw >= expAt;
+                          if (ready) {
+                            btns.push(btn('Expire', 'bg-zinc-500/10 border-zinc-500/20 text-zinc-400 hover:bg-zinc-500/20', () => {
+                              setActionError(null);
+                              executeJobAction({ address: CONTRACTS.AGI_JOB_MANAGER, abi: agiJobManagerAbi, functionName: 'expireJob', args: [jobId] });
+                            }));
+                          } else if (Number(job.assignedAt) > 0) {
+                            const sLeft = expAt - nw;
+                            const countdown = sLeft > 86400 ? `${Math.ceil(sLeft / 86400)}d` : sLeft > 3600 ? `${Math.ceil(sLeft / 3600)}h` : `${Math.ceil(sLeft / 60)}m`;
+                            btns.push(<span key="expire-pending" className="px-2 py-0.5 rounded-md border border-zinc-500/20 bg-zinc-500/10 text-zinc-400/50 text-xs font-degular-medium cursor-default">Expire ({countdown})</span>);
+                          }
+                        }
+                      }
                       if (job.status === 'In Review') {
                         if (ensClub) {
                           const rBond = validatorBondFor(job.payout);
@@ -1634,14 +1657,6 @@ export default function JobsDApp() {
                             }
                             executeJobAction({ address: CONTRACTS.AGI_JOB_MANAGER, abi: agiJobManagerAbi, functionName: 'finalizeJob', args: [jobId] });
                           }));
-                          const sLeft = fAt - nw;
-                          const expLabel = ready ? 'Expire' : `Expire (${sLeft > 86400 ? `${Math.ceil(sLeft / 86400)}d` : sLeft > 3600 ? `${Math.ceil(sLeft / 3600)}h` : `${Math.ceil(sLeft / 60)}m`})`;
-                          btns.push(
-                            <button key="expire" onClick={(e) => { e.stopPropagation(); if (!ready) return; setActionError(null); executeJobAction({ address: CONTRACTS.AGI_JOB_MANAGER, abi: agiJobManagerAbi, functionName: 'expireJob', args: [jobId] }); }}
-                              disabled={isActionPending || isActionConfirming || !ready}
-                              className={`px-2 py-0.5 rounded-md border text-xs font-degular-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-zinc-500/10 border-zinc-500/20 text-zinc-400 ${ready ? 'hover:bg-zinc-500/20' : ''}`}
-                            >{expLabel}</button>
-                          );
                         }
                       }
                       return btns.length > 0 ? <div className="flex gap-1">{btns}</div> : <span className="text-text/20 text-xs">—</span>;
