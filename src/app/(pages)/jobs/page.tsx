@@ -1547,6 +1547,10 @@ export default function JobsDApp() {
                             }
                             return true;
                           };
+                          const rowAlreadyVoted = hasVotedJobId === job.id || (job.id === selectedJob?.id && alreadyVoted);
+                          if (rowAlreadyVoted) {
+                            btns.push(<span key="voted" className="px-2 py-0.5 rounded-md border border-zinc-500/20 bg-zinc-500/10 text-zinc-400 text-xs font-degular-medium">Already Voted</span>);
+                          } else {
                           btns.push(btn('Approve', 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20', () => {
                             setActionError(null);
                             if (!checkBond()) return;
@@ -1555,6 +1559,7 @@ export default function JobsDApp() {
                             if (needsApproval) {
                               approveToken({ address: CONTRACTS.AGIALPHA_OFFICIAL, abi: erc20Abi, functionName: 'approve', args: [CONTRACTS.AGI_JOB_MANAGER, BigInt('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')] });
                             } else {
+                              setHasVotedJobId(job.id);
                               executeJobAction({ address: CONTRACTS.AGI_JOB_MANAGER, abi: agiJobManagerAbi, functionName: 'validateJob', args: [jobId, extractSubdomainLabel(ensClub!), [] as readonly `0x${string}`[]] });
                             }
                           }));
@@ -1566,9 +1571,11 @@ export default function JobsDApp() {
                             if (needsApproval) {
                               approveToken({ address: CONTRACTS.AGIALPHA_OFFICIAL, abi: erc20Abi, functionName: 'approve', args: [CONTRACTS.AGI_JOB_MANAGER, BigInt('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')] });
                             } else {
+                              setHasVotedJobId(job.id);
                               executeJobAction({ address: CONTRACTS.AGI_JOB_MANAGER, abi: agiJobManagerAbi, functionName: 'disapproveJob', args: [jobId, extractSubdomainLabel(ensClub!), [] as readonly `0x${string}`[]] });
                             }
                           }));
+                          }
                         }
                         if (isEmp) btns.push(btn('Dispute', 'bg-amber-500/10 border-amber-500/20 text-amber-400 hover:bg-amber-500/20', () => {
                           setActionError(null);
