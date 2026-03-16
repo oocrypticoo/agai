@@ -931,7 +931,7 @@ export default function JobsDApp() {
           },
         });
       }
-      actions.push({
+      if (userRole.isEmployer) actions.push({
         label: 'Expire',
         icon: Timer,
         colorClass: actionColorMap.zinc,
@@ -1569,7 +1569,7 @@ export default function JobsDApp() {
                       if (job.status === 'Assigned' && isAgent) btns.push(btn('Complete', 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20', () => {
                         setSelectedJob(job); setJobSpec(job.specMeta ?? null);
                       }));
-                      if (job.status === 'Assigned') {
+                      if (job.status === 'Assigned' && isEmp) {
                         btns.push(btn('Expire', 'bg-zinc-500/10 border-zinc-500/20 text-zinc-400 hover:bg-zinc-500/20', () => {
                           setActionError(null);
                           executeJobAction({ address: CONTRACTS.AGI_JOB_MANAGER, abi: agiJobManagerAbi, functionName: 'expireJob', args: [jobId] });
