@@ -47,6 +47,7 @@ interface ParsedJob {
   isExpired: boolean;
   isCancelled: boolean;
   completionRequestedAt: bigint;
+  assignedAt: bigint;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -454,13 +455,13 @@ export default function JobsDApp() {
           const specURI = specURIs[id];
           const compURI = completionURIs[id];
 
-          let employer = ZERO_ADDR, assignedAgent = ZERO_ADDR, payout = BigInt(0), duration = BigInt(0);
+          let employer = ZERO_ADDR, assignedAgent = ZERO_ADDR, payout = BigInt(0), duration = BigInt(0), assignedAt = BigInt(0);
           let completed = false, disputed = false, expired = false;
           let completionRequested = false, vApprovals = BigInt(0), vDisapprovals = BigInt(0);
 
           if (core.status === 'success') {
             const c = core.result as readonly [string, string, bigint, bigint, bigint, boolean, boolean, boolean, number];
-            employer = c[0]; assignedAgent = c[1]; payout = c[2]; duration = c[3];
+            employer = c[0]; assignedAgent = c[1]; payout = c[2]; duration = c[3]; assignedAt = c[4];
             completed = c[5]; disputed = c[6]; expired = c[7];
           }
           let completionRequestedAt = BigInt(0);
@@ -508,6 +509,7 @@ export default function JobsDApp() {
             ...flags,
             payout,
             duration,
+            assignedAt,
             specURI: specURI.status === 'success' ? (specURI.result as string) : '',
             details: '',
             validatorApprovals: vApprovals,
@@ -931,20 +933,28 @@ export default function JobsDApp() {
           },
         });
       }
-      if (userRole.isEmployer) actions.push({
-        label: 'Expire',
-        icon: Timer,
-        colorClass: actionColorMap.zinc,
-        execute: () => {
-          setActionError(null);
-          executeJobAction({
-            address: CONTRACTS.AGI_JOB_MANAGER,
-            abi: agiJobManagerAbi,
-            functionName: 'expireJob',
-            args: [jobId],
-          });
-        },
-      });
+      {
+        const now = Math.floor(Date.now() / 1000);
+        const expiresAt = Number(selectedJob.assignedAt) + Number(selectedJob.duration);
+        const canExpire = now >= expiresAt;
+        const secsLeft = expiresAt - now;
+        const timeLabel = canExpire ? 'Expire' : `Expire (${secsLeft > 86400 ? `${Math.ceil(secsLeft / 86400)}d` : secsLeft > 3600 ? `${Math.ceil(secsLeft / 3600)}h` : `${Math.ceil(secsLeft / 60)}m`})`;
+        if (userRole.isEmployer) actions.push({
+          label: timeLabel,
+          icon: Timer,
+          colorClass: actionColorMap.zinc,
+          disabled: !canExpire,
+          execute: () => {
+            setActionError(null);
+            executeJobAction({
+              address: CONTRACTS.AGI_JOB_MANAGER,
+              abi: agiJobManagerAbi,
+              functionName: 'expireJob',
+              args: [jobId],
+            });
+          },
+        });
+      }
     }
 
     if (selectedJob.status === 'In Review') {
@@ -1570,10 +1580,19 @@ export default function JobsDApp() {
                         setSelectedJob(job); setJobSpec(job.specMeta ?? null);
                       }));
                       if (job.status === 'Assigned' && isEmp) {
-                        btns.push(btn('Expire', 'bg-zinc-500/10 border-zinc-500/20 text-zinc-400 hover:bg-zinc-500/20', () => {
-                          setActionError(null);
-                          executeJobAction({ address: CONTRACTS.AGI_JOB_MANAGER, abi: agiJobManagerAbi, functionName: 'expireJob', args: [jobId] });
-                        }));
+                        const nowSec = Math.floor(Date.now() / 1000);
+                        const expiresAt = Number(job.assignedAt) + Number(job.duration);
+                        const canExpire = nowSec >= expiresAt;
+                        const secsLeft = expiresAt - nowSec;
+                        const expLabel = canExpire ? 'Expire' : `Expire (${secsLeft > 86400 ? `${Math.ceil(secsLeft / 86400)}d` : secsLeft > 3600 ? `${Math.ceil(secsLeft / 3600)}h` : `${Math.ceil(secsLeft / 60)}m`})`;
+                        btns.push(
+                          <button
+                            key="expire"
+                            onClick={(e) => { e.stopPropagation(); if (!canExpire) return; setActionError(null); executeJobAction({ address: CONTRACTS.AGI_JOB_MANAGER, abi: agiJobManagerAbi, functionName: 'expireJob', args: [jobId] }); }}
+                            disabled={isActionPending || isActionConfirming || !canExpire}
+                            className={`px-2 py-0.5 rounded-md border text-xs font-degular-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-zinc-500/10 border-zinc-500/20 text-zinc-400 ${canExpire ? 'hover:bg-zinc-500/20' : ''}`}
+                          >{expLabel}</button>
+                        );
                       }
                       if (job.status === 'In Review') {
                         if (ensClub) {
