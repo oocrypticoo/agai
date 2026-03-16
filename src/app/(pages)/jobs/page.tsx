@@ -8,6 +8,8 @@ import {
   Loader2, Send, Ban, Timer, Gavel, ThumbsUp, ThumbsDown, Flag, Users, Bot,
 } from 'lucide-react';
 import { useAccount, useConnect, useSignMessage, useEnsName, usePublicClient, useReadContract, useReadContracts, useWriteContract, useWaitForTransactionReceipt, useSimulateContract } from 'wagmi';
+import { simulateContract } from 'wagmi/actions';
+import { config as wagmiConfig } from './lib/wagmi-config';
 import { formatUnits, keccak256, toBytes } from 'viem';
 import { mainnet } from 'wagmi/chains';
 import Footer from '@/app/sections/Footer';
@@ -737,13 +739,43 @@ export default function JobsDApp() {
   const hasSufficientBond = !!(tokenBalance && (tokenBalance as bigint) >= validatorBondRequired);
   const alreadyVoted = (selectedJob ? votedJobIds.has(selectedJob.id) : false) || (!!validateSimError && hasSufficientBond);
 
-  // When simulation confirms already voted for selected job, persist in the Set
-  // so the table row shows Already Voted without needing to re-select the job.
+  // When simulation confirms already voted for selected job, persist in the Set.
   useEffect(() => {
     if (validateSimError && hasSufficientBond && selectedJob) {
       setVotedJobIds(prev => { const s = new Set(prev); s.add(selectedJob.id); return s; });
     }
   }, [validateSimError, hasSufficientBond, selectedJob?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Batch-simulate validateJob for ALL In Review jobs so the table shows
+  // Already Voted without needing to click each job first.
+  useEffect(() => {
+    if (!address || !ensClub || !jobs.length) return;
+    const balance = tokenBalance as bigint | undefined;
+    const inReview = jobs.filter(j => j.status === 'In Review');
+    if (!inReview.length) return;
+    let cancelled = false;
+    Promise.all(inReview.map(async job => {
+      const bond = validatorBondFor(job.payout);
+      if (!balance || balance < bond) return null; // insufficient bond → can't tell
+      try {
+        await simulateContract(wagmiConfig, {
+          address: CONTRACTS.AGI_JOB_MANAGER,
+          abi: agiJobManagerAbi,
+          functionName: 'validateJob',
+          args: [BigInt(job.id), extractSubdomainLabel(ensClub), [] as readonly `0x${string}`[]],
+          account: address,
+        });
+        return null; // succeeded → not yet voted
+      } catch {
+        return job.id; // reverted → already voted
+      }
+    })).then(results => {
+      if (cancelled) return;
+      const ids = results.filter((id): id is number => id !== null);
+      if (ids.length) setVotedJobIds(prev => { const s = new Set(prev); ids.forEach(id => s.add(id)); return s; });
+    });
+    return () => { cancelled = true; };
+  }, [address, ensClub, jobs, tokenBalance]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // (Write hooks for approve/createJob moved to CreateJobBuilder component)
 
