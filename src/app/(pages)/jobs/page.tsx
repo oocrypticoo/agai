@@ -1659,21 +1659,19 @@ export default function JobsDApp() {
                           }
                         }
                         {
-                          const CP = Number(pp?.reviewPeriod ?? 604800);
-                          const cAt = Number(job.completionRequestedAt);
-                          const fAt = cAt + CP;
-                          const ready = cAt > 0 && nowSec >= fAt;
-                          const countdown = formatCountdown(Math.max(0, fAt - nowSec));
+                          const REQ_APPROVALS = Number(pp?.approvals ?? 5);
+                          const approvalCount = Number(job.validatorApprovals);
+                          const hasQuorum = approvalCount >= REQ_APPROVALS;
                           if (isEmp || isAgent) {
                             btns.push(btn('Dispute', 'bg-amber-500/10 border-amber-500/20 text-amber-400 hover:bg-amber-500/20', () => {
                               setActionError(null);
                               executeJobAction({ address: CONTRACTS.AGI_JOB_MANAGER, abi: agiJobManagerAbi, functionName: 'disputeJob', args: [jobId] });
                             }));
                           }
-                          btns.push(btn(ready ? 'Finalize' : `Finalize (${countdown})`, 'bg-cyan-500/10 border-cyan-500/20 text-cyan-400 hover:bg-cyan-500/20', () => {
+                          btns.push(btn(hasQuorum ? 'Finalize' : `Finalize (${approvalCount}/${REQ_APPROVALS})`, 'bg-cyan-500/10 border-cyan-500/20 text-cyan-400 hover:bg-cyan-500/20', () => {
                             setActionError(null);
-                            if (!ready) {
-                              setActionError(`Cannot finalize yet. Challenge period ends ${new Date(fAt * 1000).toLocaleString()} (${countdown} remaining)`);
+                            if (!hasQuorum) {
+                              setActionError(`Cannot finalize yet. Need ${REQ_APPROVALS} approvals (currently ${approvalCount}).`);
                               return;
                             }
                             executeJobAction({ address: CONTRACTS.AGI_JOB_MANAGER, abi: agiJobManagerAbi, functionName: 'finalizeJob', args: [jobId] });
