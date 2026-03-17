@@ -1034,10 +1034,14 @@ export default function JobsDApp() {
       // Challenge period after quorum approval (default 86400 = 24h if not yet loaded)
       const challengePeriodRaw = protocolRaw?.[4];
       const CHALLENGE_PERIOD = challengePeriodRaw?.status === 'success' ? Number(challengePeriodRaw.result as bigint) : 86400;
+      const voteQuorumRaw = protocolRaw?.[0];
+      const VOTE_QUORUM = voteQuorumRaw?.status === 'success' ? Number(voteQuorumRaw.result as bigint) : 7;
       const requiredApprovalsRaw = protocolRaw?.[1];
       const REQUIRED_APPROVALS = requiredApprovalsRaw?.status === 'success' ? Number(requiredApprovalsRaw.result as bigint) : 5;
       const approvals = Number(selectedJob.validatorApprovals);
-      const quorumMet = approvals >= REQUIRED_APPROVALS;
+      const disapprovals = Number(selectedJob.validatorDisapprovals);
+      const totalVotes = approvals + disapprovals;
+      const quorumMet = totalVotes >= VOTE_QUORUM && approvals >= REQUIRED_APPROVALS;
       const completionAt = Number(selectedJob.completionRequestedAt);
       const finalizeAt = completionAt + CHALLENGE_PERIOD;
       const canFinalizeNow = completionAt > 0 && quorumMet && nowSec >= finalizeAt;
@@ -1065,7 +1069,7 @@ export default function JobsDApp() {
       const finalizeLabel = canFinalizeNow
         ? 'Finalize'
         : !quorumMet
-          ? `Finalize (${approvals}/${REQUIRED_APPROVALS} approvals)`
+          ? `Finalize (${totalVotes}/${VOTE_QUORUM} votes)`
           : `Finalize (${countdown})`;
       actions.push({
         label: finalizeLabel,
@@ -1074,7 +1078,7 @@ export default function JobsDApp() {
         execute: () => {
           setActionError(null);
           if (!quorumMet) {
-            setActionError(`Cannot finalize yet. Quorum requires ${REQUIRED_APPROVALS} approvals (currently ${approvals}).`);
+            setActionError(`Cannot finalize yet. Need ${VOTE_QUORUM} total votes (have ${totalVotes}) with ${REQUIRED_APPROVALS}+ approvals (have ${approvals}).`);
             return;
           }
           if (!canFinalizeNow) {
