@@ -796,6 +796,18 @@ export default function JobsDApp() {
     return () => { cancelled = true; };
   }, [address, ensClub, jobs, tokenBalance]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Simulate finalizeJob to detect if challenge period has passed ──────
+  const finalizeSimEnabled = selectedJob?.status === 'In Review' &&
+    Number(selectedJob.validatorApprovals) >= (protocolRaw?.[1]?.status === 'success' ? Number(protocolRaw[1].result as bigint) : 5);
+  const { error: finalizeSimError } = useSimulateContract({
+    address: CONTRACTS.AGI_JOB_MANAGER,
+    abi: agiJobManagerAbi,
+    functionName: 'finalizeJob',
+    args: finalizeSimEnabled ? [BigInt(selectedJob!.id)] : undefined,
+    query: { enabled: finalizeSimEnabled, refetchInterval: 30000, retry: false },
+  });
+  const canFinalize = finalizeSimEnabled && !finalizeSimError;
+
   // (Write hooks for approve/createJob moved to CreateJobBuilder component)
 
   // ── Token approval write hook (for agent/validator bonds) ─────────────
@@ -1057,17 +1069,24 @@ export default function JobsDApp() {
         });
       }
 
-      const finalizeLabel = quorumMet
-        ? 'Finalize'
-        : `Finalize (${approvals}/${REQUIRED_APPROVALS} approvals)`;
+      const finalizeLabel = !quorumMet
+        ? `Finalize (${approvals}/${REQUIRED_APPROVALS} approvals)`
+        : canFinalize
+          ? 'Finalize'
+          : 'Finalize (challenge pending)';
+      const finalizeDisabled = !quorumMet || !canFinalize;
       actions.push({
         label: finalizeLabel,
         icon: Gavel,
-        colorClass: actionColorMap.cyan,
+        colorClass: finalizeDisabled ? actionColorMap.cyan + ' opacity-40' : actionColorMap.cyan,
         execute: () => {
           setActionError(null);
           if (!quorumMet) {
             setActionError(`Cannot finalize yet. Need ${REQUIRED_APPROVALS} approvals (currently ${approvals}).`);
+            return;
+          }
+          if (!canFinalize) {
+            setActionError('Cannot finalize yet. 24h challenge period has not elapsed since quorum was reached.');
             return;
           }
           executeJobAction({
@@ -1081,7 +1100,7 @@ export default function JobsDApp() {
     }
 
     return actions;
-  }, [selectedJob, address, isConnected, userRole, ensAgent, ensClub, completionURIInput, executeJobAction, alreadyVoted, tokenBalance, tokenAllowance, votedJobIds, setVotedJobIds, nowSec, protocolRaw]);
+  }, [selectedJob, address, isConnected, userRole, ensAgent, ensClub, completionURIInput, executeJobAction, alreadyVoted, tokenBalance, tokenAllowance, votedJobIds, setVotedJobIds, nowSec, protocolRaw, canFinalize]);
 
   // Reset action + completion meta when selected job changes
   useEffect(() => {
@@ -1668,7 +1687,14 @@ export default function JobsDApp() {
                               executeJobAction({ address: CONTRACTS.AGI_JOB_MANAGER, abi: agiJobManagerAbi, functionName: 'disputeJob', args: [jobId] });
                             }));
                           }
-                          btns.push(btn(hasQuorum ? 'Finalize' : `Finalize (${approvalCount}/${REQ_APPROVALS})`, 'bg-cyan-500/10 border-cyan-500/20 text-cyan-400 hover:bg-cyan-500/20', () => {
+                          const isSelected = selectedJob?.id === job.id;
+                          const finReady = isSelected ? canFinalize : hasQuorum;
+                          const finLabel = !hasQuorum ? `Finalize (${approvalCount}/${REQ_APPROVALS})`
+                            : isSelected && !canFinalize ? 'Finalize (challenge pending)' : 'Finalize';
+                          const finStyle = (!hasQuorum || (isSelected && !canFinalize))
+                            ? 'bg-cyan-500/10 border-cyan-500/20 text-cyan-400/40'
+                            : 'bg-cyan-500/10 border-cyan-500/20 text-cyan-400 hover:bg-cyan-500/20';
+                          btns.push(btn(finLabel, finStyle, () => {
                             setActionError(null);
                             if (!hasQuorum) {
                               setActionError(`Cannot finalize yet. Need ${REQ_APPROVALS} approvals (currently ${approvalCount}).`);
