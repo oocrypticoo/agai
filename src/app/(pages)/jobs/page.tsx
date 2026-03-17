@@ -1031,22 +1031,13 @@ export default function JobsDApp() {
           },
         });
       }
-      // Challenge period after quorum approval (default 86400 = 24h if not yet loaded)
-      const challengePeriodRaw = protocolRaw?.[4];
-      const CHALLENGE_PERIOD = challengePeriodRaw?.status === 'success' ? Number(challengePeriodRaw.result as bigint) : 86400;
-      const voteQuorumRaw = protocolRaw?.[0];
-      const VOTE_QUORUM = voteQuorumRaw?.status === 'success' ? Number(voteQuorumRaw.result as bigint) : 7;
+      // 24h challenge period starts when 5th approval lands (requiredValidatorApprovals)
+      // We don't have quorumReachedAt from the contract, so once approvals >= required
+      // we enable the button and let the contract enforce the exact 24h gate.
       const requiredApprovalsRaw = protocolRaw?.[1];
       const REQUIRED_APPROVALS = requiredApprovalsRaw?.status === 'success' ? Number(requiredApprovalsRaw.result as bigint) : 5;
       const approvals = Number(selectedJob.validatorApprovals);
-      const disapprovals = Number(selectedJob.validatorDisapprovals);
-      const totalVotes = approvals + disapprovals;
-      const quorumMet = totalVotes >= VOTE_QUORUM && approvals >= REQUIRED_APPROVALS;
-      const completionAt = Number(selectedJob.completionRequestedAt);
-      const finalizeAt = completionAt + CHALLENGE_PERIOD;
-      const canFinalizeNow = completionAt > 0 && quorumMet && nowSec >= finalizeAt;
-      const timeLeft = finalizeAt - nowSec;
-      const countdown = formatCountdown(Math.max(0, timeLeft));
+      const quorumMet = approvals >= REQUIRED_APPROVALS;
 
       // Dispute: no timing gate — callable any time during In Review by employer or agent
       if (userRole.isEmployer || userRole.isAssignedAgent) {
@@ -1066,11 +1057,9 @@ export default function JobsDApp() {
         });
       }
 
-      const finalizeLabel = canFinalizeNow
+      const finalizeLabel = quorumMet
         ? 'Finalize'
-        : !quorumMet
-          ? `Finalize (${totalVotes}/${VOTE_QUORUM} votes)`
-          : `Finalize (${countdown})`;
+        : `Finalize (${approvals}/${REQUIRED_APPROVALS} approvals)`;
       actions.push({
         label: finalizeLabel,
         icon: Gavel,
@@ -1078,12 +1067,7 @@ export default function JobsDApp() {
         execute: () => {
           setActionError(null);
           if (!quorumMet) {
-            setActionError(`Cannot finalize yet. Need ${VOTE_QUORUM} total votes (have ${totalVotes}) with ${REQUIRED_APPROVALS}+ approvals (have ${approvals}).`);
-            return;
-          }
-          if (!canFinalizeNow) {
-            const readyDate = new Date(finalizeAt * 1000);
-            setActionError(`Cannot finalize yet. Challenge period ends ${readyDate.toLocaleString()} (${countdown} remaining)`);
+            setActionError(`Cannot finalize yet. Need ${REQUIRED_APPROVALS} approvals (currently ${approvals}).`);
             return;
           }
           executeJobAction({
