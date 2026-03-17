@@ -1031,12 +1031,16 @@ export default function JobsDApp() {
           },
         });
       }
-      // Review period from contract (default 604800 = 7d if not yet loaded)
-      const reviewPeriodRaw = protocolRaw?.[3];
-      const CHALLENGE_PERIOD = reviewPeriodRaw?.status === 'success' ? Number(reviewPeriodRaw.result as bigint) : 604800;
+      // Challenge period after quorum approval (default 86400 = 24h if not yet loaded)
+      const challengePeriodRaw = protocolRaw?.[4];
+      const CHALLENGE_PERIOD = challengePeriodRaw?.status === 'success' ? Number(challengePeriodRaw.result as bigint) : 86400;
+      const requiredApprovalsRaw = protocolRaw?.[1];
+      const REQUIRED_APPROVALS = requiredApprovalsRaw?.status === 'success' ? Number(requiredApprovalsRaw.result as bigint) : 5;
+      const approvals = Number(selectedJob.validatorApprovals);
+      const quorumMet = approvals >= REQUIRED_APPROVALS;
       const completionAt = Number(selectedJob.completionRequestedAt);
       const finalizeAt = completionAt + CHALLENGE_PERIOD;
-      const canFinalizeNow = completionAt > 0 && nowSec >= finalizeAt;
+      const canFinalizeNow = completionAt > 0 && quorumMet && nowSec >= finalizeAt;
       const timeLeft = finalizeAt - nowSec;
       const countdown = formatCountdown(Math.max(0, timeLeft));
 
@@ -1058,15 +1062,24 @@ export default function JobsDApp() {
         });
       }
 
+      const finalizeLabel = canFinalizeNow
+        ? 'Finalize'
+        : !quorumMet
+          ? `Finalize (${approvals}/${REQUIRED_APPROVALS} approvals)`
+          : `Finalize (${countdown})`;
       actions.push({
-        label: canFinalizeNow ? 'Finalize' : `Finalize (${countdown})`,
+        label: finalizeLabel,
         icon: Gavel,
         colorClass: actionColorMap.cyan,
         execute: () => {
           setActionError(null);
+          if (!quorumMet) {
+            setActionError(`Cannot finalize yet. Quorum requires ${REQUIRED_APPROVALS} approvals (currently ${approvals}).`);
+            return;
+          }
           if (!canFinalizeNow) {
             const readyDate = new Date(finalizeAt * 1000);
-            setActionError(`Cannot finalize yet. Review period ends ${readyDate.toLocaleString()} (${countdown} remaining)`);
+            setActionError(`Cannot finalize yet. Challenge period ends ${readyDate.toLocaleString()} (${countdown} remaining)`);
             return;
           }
           executeJobAction({
